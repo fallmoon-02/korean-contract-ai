@@ -1,0 +1,9 @@
+flask
+openai
+transformers
+torch
+faiss-cpu
+pandas
+scikit-learn
+python-docx
+PyPDF2
