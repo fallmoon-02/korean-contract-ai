@@ -7,4 +7,5 @@ pandas
 scikit-learn
 python-docx
 PyPDF2
-gunicorn  
+gunicorn
+huggingface_hub
