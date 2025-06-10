@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>AI 계약서 서비스 데모</title>
+  <style>
+    body { font-family: sans-serif; max-width: 800px; margin: auto; padding: 1rem; }
+    section { border: 1px solid #ccc; padding: 1rem; margin-bottom: 1rem; }
+    input, textarea { width: 100%; box-sizing: border-box; margin: .5rem 0; }
+    button { padding: .5rem 1rem; }
+    pre { background: #f9f9f9; padding: .5rem; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>AI 계약서 서비스</h1>
+  <p>하단의 폼을 채워서 API를 호출해 보세요.</p>
+
+  <!-- 1. 계약서 초안 생성 -->
+  <section>
+    <h2>1) 계약서 초안 생성</h2>
+    <form id="draftForm">
+      <label>계약 당사자 A:<input id="partyA" required /></label>
+      <label>계약 당사자 B:<input id="partyB" required /></label>
+      <label>계약 목적:<input id="subject" required /></label>
+      <label>효력 발생일:<input id="date" type="date" required /></label>
+      <button type="submit">초안 생성</button>
+    </form>
+    <h3>생성된 초안:</h3>
+    <pre id="draftResult">—</pre>
+  </section>
+
+  <!-- 2. 리스크 분석 -->
+  <section>
+    <h2>2) 리스크 분석</h2>
+    <form id="riskForm">
+      <label>조항 텍스트:<textarea id="clauseRisk" rows="3" required></textarea></label>
+      <button type="submit">분석하기</button>
+    </form>
+    <h3>리스크 레이블:</h3>
+    <pre id="riskResult">—</pre>
+  </section>
+
+  <!-- 3. 유사 템플릿 추천 -->
+  <section>
+    <h2>3) 유사 템플릿 추천</h2>
+    <form id="tmplForm">
+      <label>조항 텍스트:<textarea id="clauseTmpl" rows="3" required></textarea></label>
+      <button type="submit">추천받기</button>
+    </form>
+    <h3>추천 리스트:</h3>
+    <pre id="tmplResult">—</pre>
+  </section>
+
+  <script>
+  // 여기를 여러분 서비스 URL로 바꿔주세요.
+  const BASE = "https://korean-contract-ai.onrender.com";
+
+  // 공통: JSON POST 요청
+  async function post(path, body) {
+    const res = await fetch(BASE + path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(res.status + " " + res.statusText);
+    return res.json();
+  }
+
+  // 1) Draft form
+  document.getElementById("draftForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    document.getElementById("draftResult").textContent = "생성 중…";
+    const body = {
+      party_a: document.getElementById("partyA").value,
+      party_b: document.getElementById("partyB").value,
+      subject: document.getElementById("subject").value,
+      date:    document.getElementById("date").value,
+    };
+    try {
+      const { draft } = await post("/generate_draft", body);
+      document.getElementById("draftResult").textContent = draft;
+    } catch (err) {
+      document.getElementById("draftResult").textContent = "Error: " + err;
+    }
+  });
+
+  // 2) Risk form
+  document.getElementById("riskForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    document.getElementById("riskResult").textContent = "분석 중…";
+    const body = { clause: document.getElementById("clauseRisk").value };
+    try {
+      const { risk_label } = await post("/analyze_risk", body);
+      document.getElementById("riskResult").textContent = risk_label;
+    } catch (err) {
+      document.getElementById("riskResult").textContent = "Error: " + err;
+    }
+  });
+
+  // 3) Template form
+  document.getElementById("tmplForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    document.getElementById("tmplResult").textContent = "검색 중…";
+    const body = { clause: document.getElementById("clauseTmpl").value };
+    try {
+      const { templates } = await post("/recommend_templates", body);
+      document.getElementById("tmplResult").textContent = 
+        templates.map(t => 
+          `- [${t.template_id}] ${t.title} (score: ${t.score.toFixed(3)})\n  ${t.snippet}`
+        ).join("\n\n");
+    } catch (err) {
+      document.getElementById("tmplResult").textContent = "Error: " + err;
+    }
+  });
+  </script>
+</body>
+</html>
