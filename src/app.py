@@ -1,16 +1,19 @@
 import os
 import json
+
 import torch
 import faiss
 import openai
-import requests
-from flask import Flask, request, jsonify, render_template
-
+from flask import Flask, request, jsonify, render_template, send_from_directory
 from transformers import BertTokenizer, BertForSequenceClassification
 
-app = Flask(__name__, static_folder="static", template_folder="templates")
+app = Flask(
+    __name__,
+    static_folder="static",         # 정적 파일 위치
+    template_folder="templates"     # 템플릿 HTML 위치
+)
 
-# 1. 모델 로드 (Hugging Face)
+# 1) 허깅페이스 모델 로드
 MODEL_ID = "5wqs/kobert-risk-final"
 HF_TOKEN = os.getenv("HF_TOKEN")
 
@@ -18,42 +21,52 @@ tokenizer = BertTokenizer.from_pretrained(MODEL_ID, token=HF_TOKEN)
 model = BertForSequenceClassification.from_pretrained(MODEL_ID, token=HF_TOKEN)
 model.eval()
 
-# 2. Faiss 인덱스 및 템플릿 ID 로드
-INDEX_PATH = os.path.join("templates_index", "templates.faiss")
-IDS_PATH = os.path.join("templates_index", "templates_ids.json")
+# 2) Faiss 인덱스 로드
+INDEX_PATH = os.path.join("src", "templates_index", "templates.faiss")
+IDS_PATH   = os.path.join("src", "templates_index", "templates_ids.json")
 
 index = faiss.read_index(INDEX_PATH)
 with open(IDS_PATH, "r", encoding="utf-8") as f:
     template_ids = json.load(f)
 
-# 3. OpenAI 키
+# 3) OpenAI 키 설정
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# -------------------------
-# Routes
-# -------------------------
+# 헬퍼 함수: 텍스트 임베딩
+def embed(text):
+    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding="max_length", max_length=256)
+    with torch.no_grad():
+        hidden = model.bert(**inputs).last_hidden_state
+    vec = hidden.mean(dim=1).cpu().numpy().astype("float32")
+    faiss.normalize_L2(vec)
+    return vec
 
+# ✅ 루트 URL에서 HTML 렌더링
 @app.route("/", methods=["GET"])
 def index():
     return render_template("index.html")
 
-
+# 초안 생성
 @app.route("/generate_draft", methods=["POST"])
 def generate_draft():
     data = request.get_json()
-    a = data.get("partyA", "")
-    b = data.get("partyB", "")
-    purpose = data.get("purpose", "")
-    date = data.get("date", "")
+    party_a = data.get("party_a")
+    party_b = data.get("party_b")
+    subject = data.get("subject")
+    date = data.get("date")
+    if not all([party_a, party_b, subject, date]):
+        return jsonify({"error": "모든 필드가 필요합니다."}), 400
 
     prompt = f"""
-당사자 A: {a}
-당사자 B: {b}
-계약 목적: {purpose}
-효력 발생일: {date}
+    다음 조건에 따라 한국어 계약서 초안을 작성해 주세요.
 
-위 정보를 바탕으로 한국어 용역 계약서 초안을 조항별로 작성해 주세요. 각 조항은 번호와 제목을 포함해야 합니다.
-"""
+    계약 당사자 A: {party_a}
+    계약 당사자 B: {party_b}
+    계약 목적: {subject}
+    효력 발생일: {date}
+
+    조항 형식: “제1조(목적) … 제2조(용역 범위) …”
+    """
 
     try:
         res = openai.ChatCompletion.create(
@@ -64,11 +77,10 @@ def generate_draft():
         )
         draft = res.choices[0].message.content.strip()
         return jsonify({"draft": draft})
-
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
+# 리스크 분석
 @app.route("/analyze_risk", methods=["POST"])
 def analyze_risk():
     data = request.get_json()
@@ -81,25 +93,22 @@ def analyze_risk():
         logits = model(**inputs).logits
     pred = torch.argmax(logits, dim=1).item()
     label = "HighRisk" if pred == 1 else "LowRisk"
+    return jsonify({"risk_label": label})
 
-    return jsonify({"label": label})
-
-
+# 템플릿 추천
 @app.route("/recommend_templates", methods=["POST"])
 def recommend_templates():
     data = request.get_json()
-    text = data.get("text", "")
-    topk = int(data.get("topk", 3))
+    clause = data.get("clause")
+    if not clause:
+        return jsonify({"error": "clause is required"}), 400
 
-    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding="max_length", max_length=256)
-    with torch.no_grad():
-        vec = model.bert(**inputs).last_hidden_state.mean(dim=1).cpu().numpy().astype("float32")
-    faiss.normalize_L2(vec)
-
-    D, I = index.search(vec, topk)
+    vec = embed(clause)
+    D, I = index.search(vec, 3)
     recs = [template_ids[i] for i in I[0]]
-    return jsonify({"recommendations": recs})
 
+    return jsonify({"templates": recs})
 
+# Flask 실행
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
