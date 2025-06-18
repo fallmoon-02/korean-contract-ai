@@ -13,3 +13,4 @@ sentencepiece
 tiktoken
 streamlit
 requests
+python-dotenv
