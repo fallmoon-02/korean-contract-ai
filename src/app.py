@@ -2,6 +2,11 @@ import os
 import requests
 from flask import Flask, request, jsonify
 
+@app.route("/", methods=["GET"])
+def home():
+    return "✅ Korean Contract AI API is running!"
+
+
 app = Flask(__name__)
 
 HF_TOKEN = os.getenv("HF_TOKEN")
