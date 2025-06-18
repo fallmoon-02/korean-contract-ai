@@ -2,13 +2,14 @@ import os
 import requests
 from flask import Flask, request, jsonify
 
+app = Flask(__name__)
+
+# 루트 헬스체크용
 @app.route("/", methods=["GET"])
 def home():
     return "✅ Korean Contract AI API is running!"
 
-
-app = Flask(__name__)
-
+# 리스크 분석 API
 HF_TOKEN = os.getenv("HF_TOKEN")
 API_URL = "https://api-inference.huggingface.co/models/5wqs/kobert-risk-final"
 HEADERS = {"Authorization": f"Bearer {HF_TOKEN}"}
