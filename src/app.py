@@ -8,7 +8,7 @@ from transformers import BertTokenizer, BertForSequenceClassification
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 
-# 1. 모델 로드
+# 1. 모델 로드 (Hugging Face)
 MODEL_ID = "5wqs/kobert-risk-final"
 HF_TOKEN = os.getenv("HF_TOKEN")
 
@@ -16,28 +16,26 @@ tokenizer = BertTokenizer.from_pretrained(MODEL_ID, token=HF_TOKEN)
 model = BertForSequenceClassification.from_pretrained(MODEL_ID, token=HF_TOKEN)
 model.eval()
 
-# 2. FAISS 인덱스 및 템플릿 ID 로드
+# 2. Faiss 인덱스 및 템플릿 ID 로드
 INDEX_PATH = os.path.join("templates_index", "templates.faiss")
 IDS_PATH = os.path.join("templates_index", "templates_ids.json")
 
-index = faiss.read_index(INDEX_PATH)
+faiss_index = faiss.read_index(INDEX_PATH)
 with open(IDS_PATH, "r", encoding="utf-8") as f:
     template_ids = json.load(f)
 
-# 3. OpenAI 키 로드
+# 3. OpenAI 키
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# -------------------------
-# 기본 라우트 (index.html 렌더링)
-# -------------------------
+# ------------------------- 라우트 -------------------------
+
+# 🔹 홈 화면
 @app.route("/", methods=["GET"])
-def index():
+def home():
     return render_template("index.html")
 
 
-# -------------------------
-# 1) 계약서 초안 생성
-# -------------------------
+# 🔹 계약서 초안 생성
 @app.route("/generate_draft", methods=["POST"])
 def generate_draft():
     data = request.get_json()
@@ -45,9 +43,6 @@ def generate_draft():
     b = data.get("party_b", "")
     purpose = data.get("subject", "")
     date = data.get("date", "")
-
-    if not all([a, b, purpose, date]):
-        return jsonify({"error": "모든 필드를 입력해야 합니다."}), 400
 
     prompt = f"""
 당사자 A: {a}
@@ -67,17 +62,16 @@ def generate_draft():
         )
         draft = res.choices[0].message.content.strip()
         return jsonify({"draft": draft})
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
-# -------------------------
-# 2) 리스크 분석
-# -------------------------
+# 🔹 리스크 분석
 @app.route("/analyze_risk", methods=["POST"])
 def analyze_risk():
     data = request.get_json()
-    clause = data.get("clause", "")
+    clause = data.get("clause")
     if not clause:
         return jsonify({"error": "clause is required"}), 400
 
@@ -86,34 +80,36 @@ def analyze_risk():
         logits = model(**inputs).logits
     pred = torch.argmax(logits, dim=1).item()
     label = "HighRisk" if pred == 1 else "LowRisk"
-    return jsonify({"risk_label": label})
+
+    return jsonify({"label": label})
 
 
-# -------------------------
-# 3) 유사 템플릿 추천
-# -------------------------
+# 🔹 유사 템플릿 추천
 @app.route("/recommend_templates", methods=["POST"])
 def recommend_templates():
     data = request.get_json()
     clause = data.get("clause", "")
     topk = int(data.get("topk", 3))
 
-    if not clause:
-        return jsonify({"error": "clause is required"}), 400
-
     inputs = tokenizer(clause, return_tensors="pt", truncation=True, padding="max_length", max_length=256)
     with torch.no_grad():
         vec = model.bert(**inputs).last_hidden_state.mean(dim=1).cpu().numpy().astype("float32")
     faiss.normalize_L2(vec)
 
-    D, I = index.search(vec, topk)
-    recs = [template_ids[i] for i in I[0]]
+    D, I = faiss_index.search(vec, topk)
+    results = []
+    for i, idx in enumerate(I[0]):
+        template = template_ids[idx]
+        results.append({
+            "template_id": template.get("id", f"T{idx+1}"),
+            "title": template.get("title", "제목 없음"),
+            "snippet": template.get("text", "")[:100],
+            "score": float(D[0][i])
+        })
 
-    return jsonify({"templates": recs})
+    return jsonify({"templates": results})
 
 
-# -------------------------
-# 앱 실행
-# -------------------------
+# 🔹 앱 실행
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
