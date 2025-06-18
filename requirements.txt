@@ -11,3 +11,5 @@ gunicorn
 huggingface_hub
 sentencepiece
 tiktoken
+streamlit
+requests
