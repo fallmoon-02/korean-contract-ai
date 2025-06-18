@@ -1,1 +1,264 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>AI 계약서 서비스</title>
+  <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable.css" rel="stylesheet" />
+  <style>
+    body {
+      font-family: 'Pretendard', sans-serif;
+      background: #f5f7fa;
+      color: #333;
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+    }
 
+    /* Intro 화면 */
+    #intro {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100%;
+      text-align: center;
+    }
+
+    #intro h1 {
+      font-size: 3rem;
+      color: #2c3e50;
+      margin-bottom: 1rem;
+    }
+
+    #intro p {
+      color: #555;
+      margin-bottom: 2rem;
+    }
+
+    #intro button {
+      background: #3498db;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      padding: 1rem 2rem;
+      font-size: 1.2rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    #intro button:hover {
+      background: #2980b9;
+    }
+
+    /* Main 서비스 화면 */
+    #main {
+      display: none;
+      max-width: 900px;
+      margin: 2rem auto;
+      padding: 1rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+
+    header h1 {
+      font-size: 2rem;
+      color: #2c3e50;
+      margin: 0;
+    }
+
+    h2 {
+      color: #34495e;
+      margin-bottom: 1rem;
+    }
+
+    section {
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      padding: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 1rem;
+      font-weight: 500;
+    }
+
+    input, textarea {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      margin-top: 0.5rem;
+      font-size: 1rem;
+      transition: border 0.2s;
+      box-sizing: border-box;
+    }
+
+    textarea {
+      resize: none;
+    }
+
+    input:focus, textarea:focus {
+      border-color: #3498db;
+      outline: none;
+    }
+
+    button.form-btn {
+      background: #3498db;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    button.form-btn:hover {
+      background: #2980b9;
+    }
+
+    pre {
+      background: #ecf0f1;
+      padding: 1rem;
+      border-radius: 4px;
+      white-space: pre-wrap;
+      font-family: 'Courier New', monospace;
+    }
+  </style>
+</head>
+<body>
+  <!-- Intro 화면 -->
+  <div id="intro">
+    <h1>AI 계약서 서비스</h1>
+    <p>계약서 초안 생성, 리스크 분석, 유사 템플릿 추천을 체험해보세요.</p>
+    <button onclick="startService()">시작하기</button>
+  </div>
+
+  <!-- 메인 서비스 화면 -->
+  <div id="main">
+    <header>
+      <h1>AI 계약서 서비스</h1>
+    </header>
+
+    <!-- 1) 계약서 초안 생성 -->
+    <section>
+      <h2>1) 계약서 초안 생성</h2>
+      <form id="draftForm">
+        <label>계약 당사자 A:
+          <input id="partyA" placeholder="예: 홍길동" required />
+        </label>
+        <label>계약 당사자 B:
+          <input id="partyB" placeholder="예: 김철수" required />
+        </label>
+        <label>계약 목적:
+          <input id="subject" placeholder="예: 용역 제공" required />
+        </label>
+        <label>효력 발생일:
+          <input id="date" type="date" required />
+        </label>
+        <button type="submit" class="form-btn">초안 생성</button>
+      </form>
+      <h3>생성된 초안:</h3>
+      <pre id="draftResult">—</pre>
+    </section>
+
+    <!-- 2) 리스크 분석 -->
+    <section>
+      <h2>2) 리스크 분석</h2>
+      <form id="riskForm">
+        <label>조항 텍스트:
+          <textarea id="clauseRisk" rows="4" placeholder="분석할 조항을 입력하세요." required></textarea>
+        </label>
+        <button type="submit" class="form-btn">분석하기</button>
+      </form>
+      <h3>리스크 레이블:</h3>
+      <pre id="riskResult">—</pre>
+    </section>
+
+    <!-- 3) 유사 템플릿 추천 -->
+    <section>
+      <h2>3) 유사 템플릿 추천</h2>
+      <form id="tmplForm">
+        <label>조항 텍스트:
+          <textarea id="clauseTmpl" rows="4" placeholder="조항을 입력하면 유사 템플릿을 추천합니다." required></textarea>
+        </label>
+        <button type="submit" class="form-btn">추천받기</button>
+      </form>
+      <h3>추천 리스트:</h3>
+      <pre id="tmplResult">—</pre>
+    </section>
+  </div>
+
+  <script>
+    function startService() {
+      document.getElementById('intro').style.display = 'none';
+      document.getElementById('main').style.display = 'block';
+    }
+
+    const BASE = "https://korean-contract-ai.onrender.com";
+
+    async function post(path, body) {
+      const res = await fetch(BASE + path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error(res.status + " " + res.statusText);
+      return res.json();
+    }
+
+    // 1) Draft form
+    document.getElementById("draftForm").addEventListener("submit", async e => {
+      e.preventDefault();
+      document.getElementById("draftResult").textContent = "생성 중…";
+      const body = {
+        party_a: document.getElementById("partyA").value,
+        party_b: document.getElementById("partyB").value,
+        subject: document.getElementById("subject").value,
+        date: document.getElementById("date").value,
+      };
+      try {
+        const { draft } = await post("/generate_draft", body);
+        document.getElementById("draftResult").textContent = draft;
+      } catch (err) {
+        document.getElementById("draftResult").textContent = "Error: " + err;
+      }
+    });
+
+    // 2) Risk form
+    document.getElementById("riskForm").addEventListener("submit", async e => {
+      e.preventDefault();
+      document.getElementById("riskResult").textContent = "분석 중…";
+      const body = { clause: document.getElementById("clauseRisk").value };
+      try {
+        const { risk_label } = await post("/analyze_risk", body);
+        document.getElementById("riskResult").textContent = risk_label;
+      } catch (err) {
+        document.getElementById("riskResult").textContent = "Error: " + err;
+      }
+    });
+
+    // 3) Template form
+    document.getElementById("tmplForm").addEventListener("submit", async e => {
+      e.preventDefault();
+      document.getElementById("tmplResult").textContent = "검색 중…";
+      const body = { clause: document.getElementById("clauseTmpl").value };
+      try {
+        const { templates } = await post("/recommend_templates", body);
+        document.getElementById("tmplResult").textContent =
+          templates.map(t =>
+            `- [${t.template_id}] ${t.title} (score: ${t.score.toFixed(3)})\n  ${t.snippet}`
+          ).join("\n\n");
+      } catch (err) {
+        document.getElementById("tmplResult").textContent = "Error: " + err;
+      }
+    });
+  </script>
+</body>
+</html>
