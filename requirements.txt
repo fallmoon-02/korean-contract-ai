@@ -9,3 +9,5 @@ python-docx
 PyPDF2
 gunicorn
 huggingface_hub
+sentencepiece
+tiktoken
