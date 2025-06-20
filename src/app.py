@@ -10,13 +10,9 @@ from dotenv import load_dotenv
 # 환경 변수 로딩
 load_dotenv()
 
-app = Flask(
-    __name__,
-    static_folder="static",
-    template_folder="templates"
-)
+app = Flask(__name__, static_folder="static", template_folder="templates")
 
-# Hugging Face 모델 로드
+# 모델 및 토크나이저 로드
 MODEL_ID = "5wqs/kobert-risk-final"
 HF_TOKEN = os.getenv("HF_TOKEN")
 
@@ -24,51 +20,54 @@ tokenizer = BertTokenizer.from_pretrained(MODEL_ID, token=HF_TOKEN)
 model = BertForSequenceClassification.from_pretrained(MODEL_ID, token=HF_TOKEN)
 model.eval()
 
-# Faiss 인덱스 로드
+# Faiss 인덱스 및 템플릿 ID 로드
 INDEX_PATH = os.path.join("templates_index", "templates.faiss")
 IDS_PATH = os.path.join("templates_index", "templates_ids.json")
 
-faiss_index = faiss.read_index(INDEX_PATH)
+index = faiss.read_index(INDEX_PATH)
 with open(IDS_PATH, "r", encoding="utf-8") as f:
     template_ids = json.load(f)
 
-# OpenAI 키
+# OpenAI API 키 설정
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# ---------------------- Routes ----------------------
+# ---------------------------
+# 라우트
+# ---------------------------
 
 @app.route("/", methods=["GET"])
-def index_page():
+def home():
     return render_template("index.html")
 
 
 @app.route("/generate_draft", methods=["POST"])
 def generate_draft():
     data = request.get_json()
-    party_a = data.get("party_a", "")
-    party_b = data.get("party_b", "")
+    a = data.get("party_a", "")
+    b = data.get("party_b", "")
     subject = data.get("subject", "")
     date = data.get("date", "")
 
     prompt = f"""
-당사자 A: {party_a}
-당사자 B: {party_b}
+다음 조건에 따라 한국어 계약서 초안을 작성해 주세요.
+
+계약 당사자 A: {a}
+계약 당사자 B: {b}
 계약 목적: {subject}
 효력 발생일: {date}
 
-위 정보를 바탕으로 한국어 용역 계약서 초안을 조항별로 작성해 주세요. 각 조항은 번호와 제목을 포함해야 합니다.
+조항 형식: “제1조(목적) … 제2조(용역 범위) …”
 """
 
     try:
-        res = openai.chat.completions.create(
+        response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.7,
             max_tokens=1500
         )
-        draft = res.choices[0].message.content.strip()
+        draft = response.choices[0].message.content.strip()
         return jsonify({"draft": draft})
-
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -100,10 +99,18 @@ def recommend_templates():
         vec = model.bert(**inputs).last_hidden_state.mean(dim=1).cpu().numpy().astype("float32")
     faiss.normalize_L2(vec)
 
-    D, I = faiss_index.search(vec, topk)
-    recs = [template_ids[i] for i in I[0]]
+    D, I = index.search(vec, topk)
+    results = []
+    for dist, idx in zip(D[0], I[0]):
+        template = template_ids[idx]
+        results.append({
+            "template_id": template.get("template_id", f"id_{idx}"),
+            "title": template.get("title", "제목 없음"),
+            "snippet": template.get("snippet", ""),
+            "score": float(dist)
+        })
 
-    return jsonify({"templates": recs})
+    return jsonify({"templates": results})
 
 
 if __name__ == "__main__":
