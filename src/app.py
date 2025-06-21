@@ -3,14 +3,13 @@ import os
 import json
 import torch
 from transformers import BertTokenizer, BertForSequenceClassification
+from sentence_transformers import SentenceTransformer, util
 import openai
 
 app = Flask(__name__)
-
-# 🔐 OpenAI API 키
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# ✅ 리스크 분석 모델 초기화 (KoBERT)
+# ✅ KoBERT 모델 (리스크 분석)
 MODEL_NAME = "5wqs/kobert-risk-final"
 tokenizer = BertTokenizer.from_pretrained(MODEL_NAME)
 model = BertForSequenceClassification.from_pretrained(MODEL_NAME)
@@ -18,21 +17,26 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model.to(device)
 model.eval()
 
-# ✅ 템플릿 데이터 로딩
+# ✅ SBERT 모델 (유사도 기반 추천)
+embedder = SentenceTransformer("snunlp/KR-SBERT-V40K-klueNLI-augSTS")
+
+# ✅ 템플릿 로딩
 TEMPLATE_PATH = "templates_index/templates_ids.json"
 try:
     with open(TEMPLATE_PATH, "r", encoding="utf-8") as f:
         templates = json.load(f)
+    template_titles = [t["title"] for t in templates]
+    template_embeddings = embedder.encode(template_titles, convert_to_tensor=True)
 except Exception as e:
-    print(f"템플릿 파일 로딩 오류: {e}")
-    templates = []
+    print(f"템플릿 파일 또는 임베딩 로딩 오류: {e}")
+    templates, template_titles, template_embeddings = [], [], None
 
 # ✅ 홈 페이지
 @app.route("/")
 def index():
     return render_template("index.html")
 
-# ✅ 계약서 초안 생성
+# ✅ 계약서 초안 생성 (GPT 3.5)
 @app.route("/generate_draft", methods=["POST"])
 def generate_draft():
     data = request.get_json()
@@ -68,7 +72,7 @@ def generate_draft():
         print("초안 생성 오류:", e)
         return jsonify({"error": str(e)}), 500
 
-# ✅ 리스크 분석 (KoBERT)
+# ✅ 리스크 분석
 @app.route("/analyze_risk", methods=["POST"])
 def analyze_risk():
     clause = request.json.get("clause", "")
@@ -83,18 +87,20 @@ def analyze_risk():
         print("리스크 분석 오류:", e)
         return jsonify({"error": str(e)}), 500
 
-# ✅ 단어 기반 템플릿 추천
+# ✅ SBERT 기반 템플릿 추천
 @app.route("/recommend_templates", methods=["POST"])
 def recommend_templates():
-    clause = request.json.get("clause", "").lower()
+    clause = request.json.get("clause", "")
     try:
-        keyword_templates = []
-        for t in templates:
-            title = t.get("title", "").lower()
-            if any(keyword in clause for keyword in title.split()):
-                keyword_templates.append(t)
+        if not template_embeddings:
+            return jsonify({"templates": [], "error": "템플릿 임베딩이 없습니다."})
 
-        return jsonify({"templates": keyword_templates[:3]})
+        clause_embedding = embedder.encode(clause, convert_to_tensor=True)
+        cosine_scores = util.cos_sim(clause_embedding, template_embeddings)[0]
+        top_indices = torch.topk(cosine_scores, k=3).indices.tolist()
+
+        top_templates = [templates[i] for i in top_indices]
+        return jsonify({"templates": top_templates})
     except Exception as e:
         print("템플릿 추천 오류:", e)
         return jsonify({"error": str(e)}), 500
