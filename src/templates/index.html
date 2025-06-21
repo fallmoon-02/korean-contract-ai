@@ -11,7 +11,6 @@
       color: #f0f0f0;
       margin: 0;
       padding: 0;
-      overflow-x: hidden;
     }
     #intro {
       display: flex;
@@ -21,48 +20,17 @@
       height: 100vh;
       text-align: center;
     }
-    #intro h1 {
-      font-size: 3rem;
-      color: #ffffff;
-      margin-bottom: 1rem;
-    }
-    #intro p {
-      color: #ccc;
-      margin-bottom: 2rem;
-    }
-    #intro button {
-      background: #03dac6;
-      color: #000;
-      border: none;
-      border-radius: 30px;
-      padding: 1rem 2.5rem;
-      font-size: 1.2rem;
-      cursor: pointer;
-      box-shadow: 0 4px 12px rgba(3, 218, 198, 0.4);
-      transition: background 0.2s, transform 0.2s;
-    }
-    #intro button:hover {
-      background: #00bfa5;
-      transform: translateY(-2px);
-    }
     #main {
       display: none;
       padding: 2rem;
       min-height: 100vh;
     }
-    header {
-      text-align: center;
-      margin-bottom: 2rem;
-    }
-    header h1 {
-      font-size: 2.5rem;
-      color: #fff;
-    }
+    header { text-align: center; margin-bottom: 2rem; }
     .card-container {
       display: flex;
       justify-content: center;
+      flex-wrap: wrap;
       gap: 2rem;
-      flex-wrap: nowrap;
     }
     .card-container section {
       flex: 0 0 400px;
@@ -71,26 +39,15 @@
       padding: 2rem;
       box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
     }
-    .card-container h2 {
-      color: #03dac6;
-      margin-bottom: 1rem;
-    }
-    label {
-      display: block;
-      margin-bottom: 1rem;
-    }
     input, textarea {
       width: 100%;
-      padding: 0.75rem 1rem;
+      padding: 0.75rem;
       border: 1px solid #555;
       border-radius: 6px;
       background: #2a2a2a;
       color: #fff;
-      margin-top: 0.5rem;
-      margin-right: 0.5rem;
-      box-sizing: border-box;
-      resize: none;
       font-size: 1rem;
+      margin-top: 0.5rem;
     }
     input:focus, textarea:focus {
       border-color: #03dac6;
@@ -105,11 +62,7 @@
       font-size: 1rem;
       cursor: pointer;
       box-shadow: 0 4px 12px rgba(3, 218, 198, 0.4);
-      transition: background 0.2s, transform 0.2s;
-    }
-    button.form-btn:hover {
-      background: #00bfa5;
-      transform: translateY(-2px);
+      margin-top: 1rem;
     }
     pre {
       background: #2a2a2a;
@@ -118,12 +71,9 @@
       white-space: pre-wrap;
       font-family: 'Courier New', monospace;
     }
-    @media (max-width: 1300px) {
-      .card-container {
-        flex-wrap: wrap;
-        justify-content: center;
-      }
-    }
+    ul { padding-left: 1.5em; line-height: 1.8; }
+    a { color: #03dac6; text-decoration: none; }
+    a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
@@ -134,38 +84,28 @@
   </div>
 
   <div id="main">
-    <header>
-      <h1>AI 계약서 서비스</h1>
-    </header>
+    <header><h1>AI 계약서 서비스</h1></header>
     <div class="card-container">
-      <!-- 1) 계약서 초안 생성 -->
+      <!-- 초안 생성 -->
       <section>
         <h2>1) 계약서 초안 생성</h2>
         <form id="draftForm">
-          <label>계약 당사자 A:
-            <input id="partyA" placeholder="예: 홍길동" required />
-          </label>
-          <label>계약 당사자 B:
-            <input id="partyB" placeholder="예: 김철수" required />
-          </label>
-          <label>계약 목적:
-            <input id="subject" placeholder="예: 용역 제공" required />
-          </label>
-          <label>효력 발생일:
-            <input id="date" type="date" required />
-          </label>
+          <label>계약 당사자 A: <input id="partyA" required /></label>
+          <label>계약 당사자 B: <input id="partyB" required /></label>
+          <label>계약 목적: <input id="subject" required /></label>
+          <label>효력 발생일: <input id="date" type="date" required /></label>
           <button type="submit" class="form-btn">초안 생성</button>
         </form>
         <h3>생성된 초안:</h3>
         <pre id="draftResult">—</pre>
       </section>
 
-      <!-- 2) 리스크 분석 -->
+      <!-- 리스크 분석 -->
       <section>
         <h2>2) 리스크 분석</h2>
         <form id="riskForm">
           <label>조항 텍스트:
-            <textarea id="clauseRisk" rows="4" placeholder="분석할 조항을 입력하세요." required></textarea>
+            <textarea id="clauseRisk" rows="4" required></textarea>
           </label>
           <button type="submit" class="form-btn">분석하기</button>
         </form>
@@ -173,12 +113,12 @@
         <pre id="riskResult">—</pre>
       </section>
 
-      <!-- 3) 유사 템플릿 추천 -->
+      <!-- 템플릿 추천 -->
       <section>
         <h2>3) 유사 템플릿 추천</h2>
         <form id="tmplForm">
           <label>조항 텍스트:
-            <textarea id="clauseTmpl" rows="4" placeholder="조항을 입력하면 유사 템플릿을 추천합니다." required></textarea>
+            <textarea id="clauseTmpl" rows="4" required></textarea>
           </label>
           <button type="submit" class="form-btn">추천받기</button>
         </form>
@@ -249,15 +189,12 @@
         }
 
         const list = document.createElement("ul");
-        list.style.paddingLeft = "1.2em";
-        list.style.lineHeight = "1.8";
-
         templates.forEach(t => {
           const item = document.createElement("li");
           const link = document.createElement("a");
           link.href = t.file || "#";
           link.target = "_blank";
-          link.textContent = `${t.title}`;
+          link.textContent = t.title;
           item.appendChild(link);
           list.appendChild(item);
         });
