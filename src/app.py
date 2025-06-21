@@ -1,40 +1,41 @@
-from flask import Flask, request, jsonify, render_template
-import json
 import os
+import json
 import torch
+from flask import Flask, request, jsonify, render_template
 from transformers import BertTokenizer, BertForSequenceClassification
-import openai
 from sentence_transformers import SentenceTransformer, util
+import openai
+
+# 환경 설정
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 app = Flask(__name__)
 
-# 🔐 OpenAI API Key
-openai.api_key = os.getenv("OPENAI_API_KEY")
-
-# ✅ KoBERT 리스크 분석 모델 초기화
-MODEL_NAME = "5wqs/kobert-risk-final"
-tokenizer = BertTokenizer.from_pretrained(MODEL_NAME)
-model = BertForSequenceClassification.from_pretrained(MODEL_NAME)
+# 리스크 분석 모델 로드
+RISK_MODEL_NAME = "5wqs/kobert-risk-final"
+tokenizer = BertTokenizer.from_pretrained(RISK_MODEL_NAME)
+model = BertForSequenceClassification.from_pretrained(RISK_MODEL_NAME)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model.to(device)
 model.eval()
 
-# ✅ 문장 임베딩 모델 (FAISS 없이 간단하게)
+# 문장 임베딩 모델 로드
 embedder = SentenceTransformer("jhgan/ko-sbert-nli")
 
-# ✅ 템플릿 로드
-template_path = "templates_index/templates_ids.json"
-if os.path.exists(template_path):
-    with open(template_path, "r", encoding="utf-8") as f:
+# 템플릿 불러오기 및 임베딩 계산
+TEMPLATE_PATH = "templates_index/templates_ids.json"
+if os.path.exists(TEMPLATE_PATH):
+    with open(TEMPLATE_PATH, "r", encoding="utf-8") as f:
         templates = json.load(f)
-    template_texts = [t.get("snippet", "") for t in templates]
+    template_texts = [t["snippet"] if "snippet" in t else t.get("text", "") for t in templates]
     template_embeddings = embedder.encode(template_texts, convert_to_tensor=True)
 else:
     templates = []
     template_embeddings = []
 
 @app.route("/")
-def home():
+def index():
     return render_template("index.html")
 
 @app.route("/generate_draft", methods=["POST"])
@@ -64,7 +65,7 @@ def generate_draft():
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.7,
-            max_tokens=1500,
+            max_tokens=1500
         )
         draft = response.choices[0].message["content"]
         return jsonify({"draft": draft})
@@ -78,11 +79,9 @@ def analyze_risk():
     try:
         inputs = tokenizer(clause, return_tensors="pt", truncation=True, padding=True, max_length=512)
         inputs = {k: v.to(device) for k, v in inputs.items()}
-
         with torch.no_grad():
             outputs = model(**inputs)
             pred = torch.argmax(outputs.logits, dim=1).item()
-
         risk_label = "HighRisk" if pred == 1 else "LowRisk"
         return jsonify({"risk_label": risk_label})
     except Exception as e:
@@ -91,24 +90,21 @@ def analyze_risk():
 
 @app.route("/recommend_templates", methods=["POST"])
 def recommend_templates():
-    clause = request.json.get("clause", "")
+    user_clause = request.json.get("clause", "")
     try:
-        if not templates or not template_embeddings.any():
-            return jsonify({"templates": [], "error": "템플릿이 비어있습니다."})
-
-        query_embedding = embedder.encode(clause, convert_to_tensor=True)
-        cos_scores = util.pytorch_cos_sim(query_embedding, template_embeddings)[0]
-        top_k = torch.topk(cos_scores, k=3)
+        user_embedding = embedder.encode(user_clause, convert_to_tensor=True)
+        cos_scores = util.pytorch_cos_sim(user_embedding, template_embeddings)[0]
+        top_results = torch.topk(cos_scores, k=min(3, len(templates)))
 
         results = []
-        for score, idx in zip(top_k[0], top_k[1]):
-            temp = templates[idx]
+        for score, idx in zip(top_results.values, top_results.indices):
+            t = templates[idx.item()]
             results.append({
-                "template_id": temp.get("template_id", ""),
-                "title": temp.get("title", ""),
-                "file": temp.get("file", "#"),
-                "snippet": temp.get("snippet", ""),
-                "score": float(score)
+                "template_id": t.get("template_id", idx.item()),
+                "title": t.get("title", "제목 없음"),
+                "score": float(score),
+                "snippet": t.get("snippet", ""),
+                "file": t.get("file", "")
             })
 
         return jsonify({"templates": results})
@@ -117,4 +113,4 @@ def recommend_templates():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=False, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
