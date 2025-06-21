@@ -2,28 +2,28 @@ from flask import Flask, request, jsonify, render_template
 import json
 import os
 import torch
-from transformers import BertTokenizer, BertForSequenceClassification
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import openai
 
 app = Flask(__name__)
 
-# 🔐 API 키 (초안 생성을 위해 필요)
+# 🔐 GPT API 키
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # ✅ 리스크 분석 모델 초기화
-MODEL_NAME = "5wqs/kobert-risk-final"  # Hugging Face에 업로드한 모델 이름
-tokenizer = BertTokenizer.from_pretrained(MODEL_NAME)
-model = BertForSequenceClassification.from_pretrained(MODEL_NAME)
+MODEL_NAME = "5wqs/kobert-risk-final"
+tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model.to(device)
 model.eval()
 
-# 홈페이지 렌더링
+# 🏠 홈페이지 렌더링
 @app.route("/")
 def index():
     return render_template("index.html")
 
-# ✅ 계약서 초안 생성 (GPT API)
+# ✍ 계약서 초안 생성
 @app.route("/generate_draft", methods=["POST"])
 def generate_draft():
     data = request.get_json()
@@ -48,7 +48,7 @@ def generate_draft():
 
     try:
         response = openai.ChatCompletion.create(
-            model="gpt-4",
+            model="gpt-3.5-turbo",  # ✅ gpt-4는 유료 사용자만 가능
             messages=[{"role": "user", "content": prompt}],
             temperature=0.7,
             max_tokens=1500,
@@ -56,36 +56,44 @@ def generate_draft():
         draft = response.choices[0].message["content"]
         return jsonify({"draft": draft})
     except Exception as e:
+        print("초안 생성 오류:", e)
         return jsonify({"error": str(e)}), 500
 
-# ✅ 리스크 분석 (KoBERT 추론)
+# 🧠 리스크 분석 (KoBERT)
 @app.route("/analyze_risk", methods=["POST"])
 def analyze_risk():
     clause = request.json.get("clause", "")
     try:
-        inputs = tokenizer(clause, return_tensors="pt", truncation=True, padding=True).to(device)
+        inputs = tokenizer(clause, return_tensors="pt", truncation=True, padding=True, max_length=512)
+        inputs = {k: v.to(device) for k, v in inputs.items()}
+
         with torch.no_grad():
             outputs = model(**inputs)
             pred = torch.argmax(outputs.logits, dim=1).item()
         risk_label = "HighRisk" if pred == 1 else "LowRisk"
         return jsonify({"risk_label": risk_label})
     except Exception as e:
+        print("리스크 분석 오류:", e)
         return jsonify({"error": str(e)}), 500
 
-# ✅ 유사 템플릿 추천
+# 📚 유사 템플릿 추천
 @app.route("/recommend_templates", methods=["POST"])
 def recommend_templates():
     user_clause = request.json.get("clause", "")
-
     template_path = "templates_index/templates_ids.json"
+
     if not os.path.exists(template_path):
         return jsonify({"templates": [], "error": "템플릿 파일이 없습니다."}), 500
 
-    with open(template_path, "r", encoding="utf-8") as f:
-        templates = json.load(f)
+    try:
+        with open(template_path, "r", encoding="utf-8") as f:
+            templates = json.load(f)
 
-    top_k = templates[:3]
-    return jsonify({"templates": top_k})
+        top_k = templates[:3]
+        return jsonify({"templates": top_k})
+    except Exception as e:
+        print("템플릿 추천 오류:", e)
+        return jsonify({"templates": [], "error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(debug=True)
