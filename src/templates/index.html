@@ -13,7 +13,6 @@
       padding: 0;
       overflow-x: hidden;
     }
-
     #intro {
       display: flex;
       flex-direction: column;
@@ -22,18 +21,15 @@
       height: 100vh;
       text-align: center;
     }
-
     #intro h1 {
       font-size: 3rem;
       color: #ffffff;
       margin-bottom: 1rem;
     }
-
     #intro p {
       color: #ccc;
       margin-bottom: 2rem;
     }
-
     #intro button {
       background: #03dac6;
       color: #000;
@@ -45,35 +41,29 @@
       box-shadow: 0 4px 12px rgba(3, 218, 198, 0.4);
       transition: background 0.2s, transform 0.2s;
     }
-
     #intro button:hover {
       background: #00bfa5;
       transform: translateY(-2px);
     }
-
     #main {
       display: none;
       padding: 2rem;
       min-height: 100vh;
     }
-
     header {
       text-align: center;
       margin-bottom: 2rem;
     }
-
     header h1 {
       font-size: 2.5rem;
       color: #fff;
     }
-
     .card-container {
       display: flex;
       justify-content: center;
       gap: 2rem;
       flex-wrap: nowrap;
     }
-
     .card-container section {
       flex: 0 0 400px;
       background: #1e1e1e;
@@ -81,17 +71,14 @@
       padding: 2rem;
       box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
     }
-
     .card-container h2 {
       color: #03dac6;
       margin-bottom: 1rem;
     }
-
     label {
       display: block;
       margin-bottom: 1rem;
     }
-
     input, textarea {
       width: 100%;
       padding: 0.75rem 1rem;
@@ -100,17 +87,15 @@
       background: #2a2a2a;
       color: #fff;
       margin-top: 0.5rem;
-      margin-right: 0.5rem; /* 오른쪽 마진 추가 */
+      margin-right: 0.5rem;
       box-sizing: border-box;
-      resize: none;         /* 크기 조절 못함 */
+      resize: none;
       font-size: 1rem;
     }
-
     input:focus, textarea:focus {
       border-color: #03dac6;
       outline: none;
     }
-
     button.form-btn {
       background: #03dac6;
       color: #000;
@@ -122,12 +107,10 @@
       box-shadow: 0 4px 12px rgba(3, 218, 198, 0.4);
       transition: background 0.2s, transform 0.2s;
     }
-
     button.form-btn:hover {
       background: #00bfa5;
       transform: translateY(-2px);
     }
-
     pre {
       background: #2a2a2a;
       padding: 1rem;
@@ -135,7 +118,6 @@
       white-space: pre-wrap;
       font-family: 'Courier New', monospace;
     }
-
     @media (max-width: 1300px) {
       .card-container {
         flex-wrap: wrap;
@@ -201,7 +183,7 @@
           <button type="submit" class="form-btn">추천받기</button>
         </form>
         <h3>추천 리스트:</h3>
-        <pre id="tmplResult">—</pre>
+        <div id="tmplResult">—</div>
       </section>
     </div>
   </div>
@@ -212,7 +194,7 @@
       document.getElementById('main').style.display = 'block';
     }
 
-    const BASE = "https://korean-contract-ai.onrender.com";
+    const BASE = "";
 
     async function post(path, body) {
       const res = await fetch(BASE + path, {
@@ -255,16 +237,35 @@
 
     document.getElementById("tmplForm").addEventListener("submit", async e => {
       e.preventDefault();
-      document.getElementById("tmplResult").textContent = "검색 중…";
+      const resultArea = document.getElementById("tmplResult");
+      resultArea.innerHTML = "추천 중…";
+
       const body = { clause: document.getElementById("clauseTmpl").value };
       try {
         const { templates } = await post("/recommend_templates", body);
-        document.getElementById("tmplResult").textContent =
-          templates.map(t =>
-            `- [${t.template_id}] ${t.title} (score: ${t.score.toFixed(3)})\n  ${t.snippet}`
-          ).join("\n\n");
+        if (!templates || templates.length === 0) {
+          resultArea.innerHTML = "추천 결과가 없습니다.";
+          return;
+        }
+
+        const list = document.createElement("ul");
+        list.style.paddingLeft = "1.2em";
+        list.style.lineHeight = "1.8";
+
+        templates.forEach(t => {
+          const item = document.createElement("li");
+          const link = document.createElement("a");
+          link.href = t.file || "#";
+          link.target = "_blank";
+          link.textContent = `${t.title}`;
+          item.appendChild(link);
+          list.appendChild(item);
+        });
+
+        resultArea.innerHTML = "";
+        resultArea.appendChild(list);
       } catch (err) {
-        document.getElementById("tmplResult").textContent = "Error: " + err;
+        resultArea.textContent = "Error: " + err;
       }
     });
   </script>
