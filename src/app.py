@@ -1,106 +1,103 @@
+from flask import Flask, request, jsonify, render_template
 import os
-os.environ["TOKENIZERS_PARALLELISM"] = "false"
-
-from flask import Flask, request, jsonify
-from transformers import BertTokenizer, BertForSequenceClassification
-from sentence_transformers import SentenceTransformer, util
-import torch
 import json
+import torch
+from transformers import BertTokenizer, BertForSequenceClassification
+import openai
 
 app = Flask(__name__)
 
-# 디바이스 설정 (가능하면 GPU)
+# 🔐 OpenAI API 키
+openai.api_key = os.getenv("OPENAI_API_KEY")
+
+# ✅ 리스크 분석 모델 초기화 (KoBERT)
+MODEL_NAME = "5wqs/kobert-risk-final"
+tokenizer = BertTokenizer.from_pretrained(MODEL_NAME)
+model = BertForSequenceClassification.from_pretrained(MODEL_NAME)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model.to(device)
+model.eval()
 
-# 모델 로드 (지연 로딩용으로 None으로 시작)
-tokenizer = None
-risk_model = None
-embedder = SentenceTransformer("jhgan/ko-sbert-nli")  # CPU friendly 모델
+# ✅ 템플릿 데이터 로딩
+TEMPLATE_PATH = "templates_index/templates_ids.json"
+try:
+    with open(TEMPLATE_PATH, "r", encoding="utf-8") as f:
+        templates = json.load(f)
+except Exception as e:
+    print(f"템플릿 파일 로딩 오류: {e}")
+    templates = []
 
-# 템플릿 데이터 로딩 (embedding 미리 생성된 버전 사용 권장)
-with open("templates.json", encoding="utf-8") as f:
-    templates = json.load(f)
-    template_texts = [t["snippet"] for t in templates]
-    template_embeddings = embedder.encode(template_texts, convert_to_tensor=True)
+# ✅ 홈 페이지
+@app.route("/")
+def index():
+    return render_template("index.html")
 
-
+# ✅ 계약서 초안 생성
 @app.route("/generate_draft", methods=["POST"])
 def generate_draft():
+    data = request.get_json()
+    party_a = data.get("party_a", "")
+    party_b = data.get("party_b", "")
+    subject = data.get("subject", "")
+    date = data.get("date", "")
+
+    prompt = f"""
+너는 한국어 계약서를 작성하는 법률 비서야.
+
+다음 정보를 바탕으로 계약서를 자연스럽고 조항별로 작성해줘:
+
+- 계약 당사자 A: {party_a}
+- 계약 당사자 B: {party_b}
+- 계약 목적: {subject}
+- 효력 발생일: {date}
+
+제1조 (목적), 제2조 (계약 기간), 제3조 (권리 및 의무), 제4조 (비밀유지), 제5조 (계약 해지), 제6조 (기타사항) 등의 항목을 포함해줘.
+법률적 문체를 사용하고, 각 조항은 실제 계약서처럼 구체적으로 작성해줘.
+    """
+
     try:
-        from openai import OpenAI
-        openai = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-        data = request.json
-        prompt = f"계약 당사자: {data['party_a']} 와 {data['party_b']}\n계약 목적: {data['subject']}\n시작일: {data['date']}\n위 정보를 바탕으로 한글 계약서 초안을 만들어줘."
-
-        completion = openai.chat.completions.create(
+        response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "당신은 계약서 초안 작성 전문가입니다."},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=1024,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7,
+            max_tokens=1500,
         )
-        return jsonify({"draft": completion.choices[0].message.content})
-
+        draft = response.choices[0].message["content"]
+        return jsonify({"draft": draft})
     except Exception as e:
         print("초안 생성 오류:", e)
         return jsonify({"error": str(e)}), 500
 
-
+# ✅ 리스크 분석 (KoBERT)
 @app.route("/analyze_risk", methods=["POST"])
 def analyze_risk():
-    global tokenizer, risk_model
-
+    clause = request.json.get("clause", "")
     try:
-        clause = request.json.get("clause", "")
-
-        # 필요할 때만 로드
-        if tokenizer is None or risk_model is None:
-            tokenizer = BertTokenizer.from_pretrained("beomi/kcbert-base")
-            risk_model = BertForSequenceClassification.from_pretrained("monologg/koelectra-small-discriminator")
-            risk_model.to(device)
-
-        inputs = tokenizer(clause, return_tensors="pt", truncation=True, padding=True, max_length=512)
-        inputs = {k: v.to(device) for k, v in inputs.items()}
-
+        inputs = tokenizer(clause, return_tensors="pt", truncation=True, padding=True, max_length=512).to(device)
         with torch.no_grad():
-            outputs = risk_model(**inputs)
+            outputs = model(**inputs)
             pred = torch.argmax(outputs.logits, dim=1).item()
-
         risk_label = "HighRisk" if pred == 1 else "LowRisk"
         return jsonify({"risk_label": risk_label})
-
     except Exception as e:
         print("리스크 분석 오류:", e)
         return jsonify({"error": str(e)}), 500
 
-
+# ✅ 단어 기반 템플릿 추천
 @app.route("/recommend_templates", methods=["POST"])
 def recommend_templates():
+    clause = request.json.get("clause", "").lower()
     try:
-        clause = request.json.get("clause", "")
-        query_embedding = embedder.encode(clause, convert_to_tensor=True)
+        keyword_templates = []
+        for t in templates:
+            title = t.get("title", "").lower()
+            if any(keyword in clause for keyword in title.split()):
+                keyword_templates.append(t)
 
-        cos_scores = util.cos_sim(query_embedding, template_embeddings)[0]
-        top_results = torch.topk(cos_scores, k=5)
-
-        top_templates = []
-        for score, idx in zip(top_results.values, top_results.indices):
-            t = templates[idx.item()]
-            top_templates.append({"title": t["title"], "file": t["file"]})
-
-        return jsonify({"templates": top_templates})
-
+        return jsonify({"templates": keyword_templates[:3]})
     except Exception as e:
         print("템플릿 추천 오류:", e)
         return jsonify({"error": str(e)}), 500
 
-
-@app.route("/")
-def home():
-    return "AI 계약서 서비스가 실행 중입니다."
-
-
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    app.run(debug=True)
