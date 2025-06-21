@@ -5,75 +5,160 @@
   <title>AI 계약서 서비스</title>
   <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable.css" rel="stylesheet" />
   <style>
+    * {
+      box-sizing: border-box;
+    }
+
     body {
-      font-family: 'Pretendard', sans-serif;
-      background: #121212;
-      color: #f0f0f0;
+      font-family: 'Pretendard Variable', sans-serif;
+      background-color: #121212;
+      color: #f5f5f5;
       margin: 0;
       padding: 0;
     }
+
+    #intro, #main {
+      max-width: 1000px;
+      margin: auto;
+      padding: 3rem 1rem;
+    }
+
     #intro {
       display: flex;
       flex-direction: column;
-      justify-content: center;
       align-items: center;
-      height: 100vh;
+      justify-content: center;
+      min-height: 100vh;
       text-align: center;
     }
-    #main {
-      display: none;
-      padding: 2rem;
-      min-height: 100vh;
+
+    #intro h1 {
+      font-size: 3rem;
+      margin-bottom: 1rem;
     }
-    header { text-align: center; margin-bottom: 2rem; }
+
+    #intro p {
+      font-size: 1.2rem;
+      color: #ccc;
+      margin-bottom: 2rem;
+    }
+
+    #intro button {
+      background-color: #03dac6;
+      color: #000;
+      padding: 0.8rem 2rem;
+      border: none;
+      border-radius: 25px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    #intro button:hover {
+      background-color: #00bfa5;
+      transform: scale(1.05);
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
     .card-container {
       display: flex;
-      justify-content: center;
       flex-wrap: wrap;
       gap: 2rem;
+      justify-content: center;
     }
+
     .card-container section {
-      flex: 0 0 400px;
-      background: #1e1e1e;
-      border-radius: 12px;
+      background-color: #1f1f1f;
       padding: 2rem;
-      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+      border-radius: 12px;
+      flex: 1 1 300px;
+      min-width: 320px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
     }
+
+    section h2 {
+      color: #03dac6;
+      font-size: 1.3rem;
+      margin-bottom: 1rem;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 1rem;
+      font-size: 0.95rem;
+    }
+
     input, textarea {
       width: 100%;
-      padding: 0.75rem;
+      background-color: #2a2a2a;
       border: 1px solid #555;
       border-radius: 6px;
-      background: #2a2a2a;
-      color: #fff;
+      color: #f5f5f5;
+      padding: 0.75rem;
       font-size: 1rem;
-      margin-top: 0.5rem;
     }
+
+    textarea {
+      resize: vertical;
+    }
+
     input:focus, textarea:focus {
-      border-color: #03dac6;
       outline: none;
+      border-color: #03dac6;
     }
+
     button.form-btn {
-      background: #03dac6;
+      background-color: #03dac6;
       color: #000;
+      padding: 0.6rem 1.2rem;
       border: none;
-      border-radius: 30px;
-      padding: 0.75rem 1.5rem;
+      border-radius: 25px;
+      font-weight: bold;
       font-size: 1rem;
+      margin-top: 1rem;
       cursor: pointer;
-      box-shadow: 0 4px 12px rgba(3, 218, 198, 0.4);
+      transition: 0.3s ease;
+    }
+
+    button.form-btn:hover {
+      background-color: #00bfa5;
+      transform: translateY(-2px);
+    }
+
+    pre, #tmplResult {
+      background-color: #2a2a2a;
+      padding: 1rem;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      white-space: pre-wrap;
       margin-top: 1rem;
     }
-    pre {
-      background: #2a2a2a;
-      padding: 1rem;
-      border-radius: 6px;
-      white-space: pre-wrap;
-      font-family: 'Courier New', monospace;
+
+    ul {
+      list-style: disc;
+      padding-left: 1.5em;
     }
-    ul { padding-left: 1.5em; line-height: 1.8; }
-    a { color: #03dac6; text-decoration: none; }
-    a:hover { text-decoration: underline; }
+
+    a {
+      color: #03dac6;
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    @media (max-width: 768px) {
+      .card-container {
+        flex-direction: column;
+        align-items: stretch;
+      }
+    }
   </style>
 </head>
 <body>
@@ -83,43 +168,39 @@
     <button onclick="startService()">시작하기</button>
   </div>
 
-  <div id="main">
+  <div id="main" style="display: none;">
     <header><h1>AI 계약서 서비스</h1></header>
     <div class="card-container">
-      <!-- 초안 생성 -->
+      <!-- 1. 초안 생성 -->
       <section>
         <h2>1) 계약서 초안 생성</h2>
         <form id="draftForm">
-          <label>계약 당사자 A: <input id="partyA" required /></label>
-          <label>계약 당사자 B: <input id="partyB" required /></label>
-          <label>계약 목적: <input id="subject" required /></label>
-          <label>효력 발생일: <input id="date" type="date" required /></label>
+          <label>계약 당사자 A: <input id="partyA" required></label>
+          <label>계약 당사자 B: <input id="partyB" required></label>
+          <label>계약 목적: <input id="subject" required></label>
+          <label>효력 발생일: <input id="date" type="date" required></label>
           <button type="submit" class="form-btn">초안 생성</button>
         </form>
         <h3>생성된 초안:</h3>
         <pre id="draftResult">—</pre>
       </section>
 
-      <!-- 리스크 분석 -->
+      <!-- 2. 리스크 분석 -->
       <section>
         <h2>2) 리스크 분석</h2>
         <form id="riskForm">
-          <label>조항 텍스트:
-            <textarea id="clauseRisk" rows="4" required></textarea>
-          </label>
+          <label>조항 텍스트: <textarea id="clauseRisk" rows="4" required></textarea></label>
           <button type="submit" class="form-btn">분석하기</button>
         </form>
         <h3>리스크 레이블:</h3>
         <pre id="riskResult">—</pre>
       </section>
 
-      <!-- 템플릿 추천 -->
+      <!-- 3. 유사 템플릿 추천 -->
       <section>
         <h2>3) 유사 템플릿 추천</h2>
         <form id="tmplForm">
-          <label>조항 텍스트:
-            <textarea id="clauseTmpl" rows="4" required></textarea>
-          </label>
+          <label>조항 텍스트: <textarea id="clauseTmpl" rows="4" required></textarea></label>
           <button type="submit" class="form-btn">추천받기</button>
         </form>
         <h3>추천 리스트:</h3>
@@ -130,8 +211,8 @@
 
   <script>
     function startService() {
-      document.getElementById('intro').style.display = 'none';
-      document.getElementById('main').style.display = 'block';
+      document.getElementById("intro").style.display = "none";
+      document.getElementById("main").style.display = "block";
     }
 
     const BASE = "";
@@ -179,7 +260,6 @@
       e.preventDefault();
       const resultArea = document.getElementById("tmplResult");
       resultArea.innerHTML = "추천 중…";
-
       const body = { clause: document.getElementById("clauseTmpl").value };
       try {
         const { templates } = await post("/recommend_templates", body);
