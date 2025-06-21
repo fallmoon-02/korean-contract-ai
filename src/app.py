@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify, render_template
-import os
 import json
+import os
 import torch
 from transformers import BertTokenizer, BertForSequenceClassification
 from sentence_transformers import SentenceTransformer, util
@@ -8,38 +8,39 @@ import openai
 
 app = Flask(__name__)
 
-# 🔐 OpenAI API 설정 (GPT 3.5 사용)
+# ✅ OpenAI API 초기화
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# ✅ KoBERT 리스크 분석 모델
+# ✅ 계약 리스크 분석 모델 (KoBERT)
 MODEL_NAME = "5wqs/kobert-risk-final"
 tokenizer = BertTokenizer.from_pretrained(MODEL_NAME)
 model = BertForSequenceClassification.from_pretrained(MODEL_NAME)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model.to(device).eval()
+model.to(device)
+model.eval()
 
-# ✅ SBERT 임베딩 모델
+# ✅ 문장 임베딩 모델 (SBERT)
 embedder = SentenceTransformer("jhgan/ko-sbert-nli")
 
-# ✅ 템플릿 데이터 로드 및 임베딩
-TEMPLATE_PATH = "templates_index/templates_ids.json"
+# ✅ 템플릿 불러오기 및 임베딩
+template_path = "templates_index/templates_ids.json"
 templates = []
-template_embeddings = []
+template_embeddings = None
 
-if os.path.exists(TEMPLATE_PATH):
-    with open(TEMPLATE_PATH, "r", encoding="utf-8") as f:
+if os.path.exists(template_path):
+    with open(template_path, encoding="utf-8") as f:
         templates = json.load(f)
-    template_texts = [t.get("snippet", t["title"]) for t in templates]
+    # snippet 없으면 title만 사용
+    template_texts = [t.get("snippet") or t["title"] for t in templates]
     template_embeddings = embedder.encode(template_texts, convert_to_tensor=True)
-else:
-    print("❗템플릿 JSON 파일이 없습니다.")
 
-# 🔹 홈페이지
+# ✅ 라우팅
+
 @app.route("/")
 def index():
     return render_template("index.html")
 
-# 🔹 계약서 초안 생성 (GPT-3.5)
+
 @app.route("/generate_draft", methods=["POST"])
 def generate_draft():
     data = request.get_json()
@@ -49,17 +50,14 @@ def generate_draft():
     date = data.get("date", "")
 
     prompt = f"""
-너는 계약서를 전문적으로 작성하는 법률 비서야.
-
-다음 정보를 참고하여 한국어 계약서를 조항별로 구성해줘:
+너는 계약서 전문 법률 비서야. 아래 정보를 참고해서 한국어 계약서 초안을 전문적으로 작성해줘.
 
 - 계약 당사자 A: {party_a}
 - 계약 당사자 B: {party_b}
 - 계약 목적: {subject}
 - 효력 발생일: {date}
 
-반드시 제1조 (목적), 제2조 (계약 기간), 제3조 (권리 및 의무), 제4조 (비밀유지), 제5조 (계약 해지), 제6조 (기타사항) 항목 포함.
-법률 문체를 사용해서 자연스럽게 작성해줘.
+제1조 (목적), 제2조 (계약 기간), 제3조 (권리 및 의무), 제4조 (비밀유지), 제5조 (계약 해지), 제6조 (기타사항)을 포함해서 실제 계약서처럼 구체적으로 작성해줘.
     """
 
     try:
@@ -75,7 +73,7 @@ def generate_draft():
         print("초안 생성 오류:", e)
         return jsonify({"error": str(e)}), 500
 
-# 🔹 리스크 분석 (KoBERT)
+
 @app.route("/analyze_risk", methods=["POST"])
 def analyze_risk():
     clause = request.json.get("clause", "")
@@ -86,20 +84,19 @@ def analyze_risk():
         with torch.no_grad():
             outputs = model(**inputs)
             pred = torch.argmax(outputs.logits, dim=1).item()
-
         risk_label = "HighRisk" if pred == 1 else "LowRisk"
         return jsonify({"risk_label": risk_label})
     except Exception as e:
         print("리스크 분석 오류:", e)
         return jsonify({"error": str(e)}), 500
 
-# 🔹 템플릿 추천 (SBERT 임베딩 + 코사인 유사도)
+
 @app.route("/recommend_templates", methods=["POST"])
 def recommend_templates():
     clause = request.json.get("clause", "")
     try:
-        if not template_embeddings:
-            return jsonify({"templates": [], "error": "템플릿 임베딩이 없습니다."})
+        if template_embeddings is None or len(template_embeddings) == 0:
+            return jsonify({"templates": [], "error": "템플릿 임베딩이 없습니다."}), 500
 
         query_embedding = embedder.encode(clause, convert_to_tensor=True)
         scores = util.pytorch_cos_sim(query_embedding, template_embeddings)[0]
@@ -118,6 +115,7 @@ def recommend_templates():
     except Exception as e:
         print("템플릿 추천 오류:", e)
         return jsonify({"error": str(e)}), 500
+
 
 if __name__ == "__main__":
     app.run(debug=True)
