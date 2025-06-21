@@ -7,65 +7,201 @@
   <style>
     body {
       font-family: 'Pretendard', sans-serif;
-      background: #f5f7fa;
-      color: #333;
+      background: #121212;
+      color: #f0f0f0;
       margin: 0;
       padding: 0;
-      height: 100vh;
+      overflow-x: hidden;
     }
-    #intro { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; text-align: center; }
-    #intro h1 { font-size: 3rem; color: #2c3e50; margin-bottom: 1rem; }
-    #intro p { color: #555; margin-bottom: 2rem; }
-    #intro button { background: #3498db; color: #fff; border: none; border-radius: 4px; padding: 1rem 2rem; font-size: 1.2rem; cursor: pointer; }
-    #main { display: none; max-width: 900px; margin: 2rem auto; padding: 1rem; }
-    section { background: #fff; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); padding: 2rem; margin-bottom: 2rem; }
-    label { display: block; margin-bottom: 1rem; font-weight: 500; }
-    input, textarea { width: 100%; padding: 0.75rem 1rem; border: 1px solid #ccc; border-radius: 4px; margin-top: 0.5rem; font-size: 1rem; box-sizing: border-box; }
-    textarea { resize: none; }
-    button.form-btn { background: #3498db; color: #fff; border: none; border-radius: 4px; padding: 0.75rem 1.5rem; font-size: 1rem; cursor: pointer; }
-    pre { background: #ecf0f1; padding: 1rem; border-radius: 4px; white-space: pre-wrap; font-family: monospace; }
+
+    #intro {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      text-align: center;
+    }
+
+    #intro h1 {
+      font-size: 3rem;
+      color: #ffffff;
+      margin-bottom: 1rem;
+    }
+
+    #intro p {
+      color: #ccc;
+      margin-bottom: 2rem;
+    }
+
+    #intro button {
+      background: #03dac6;
+      color: #000;
+      border: none;
+      border-radius: 30px;
+      padding: 1rem 2.5rem;
+      font-size: 1.2rem;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(3, 218, 198, 0.4);
+      transition: background 0.2s, transform 0.2s;
+    }
+
+    #intro button:hover {
+      background: #00bfa5;
+      transform: translateY(-2px);
+    }
+
+    #main {
+      display: none;
+      padding: 2rem;
+      min-height: 100vh;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    header h1 {
+      font-size: 2.5rem;
+      color: #fff;
+    }
+
+    .card-container {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      flex-wrap: nowrap; /* 줄바꿈 안함 */
+    }
+
+    .card-container section {
+      flex: 0 0 400px;  /* 고정 너비 카드 */
+      background: #1e1e1e;
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+    }
+
+    .card-container h2 {
+      color: #03dac6;
+      margin-bottom: 1rem;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 1rem;
+    }
+
+    input, textarea {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border: 1px solid #555;
+      border-radius: 6px;
+      background: #2a2a2a;
+      color: #fff;
+      margin-top: 0.5rem;
+      font-size: 1rem;
+    }
+
+    input:focus, textarea:focus {
+      border-color: #03dac6;
+      outline: none;
+    }
+
+    button.form-btn {
+      background: #03dac6;
+      color: #000;
+      border: none;
+      border-radius: 30px;
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(3, 218, 198, 0.4);
+      transition: background 0.2s, transform 0.2s;
+    }
+
+    button.form-btn:hover {
+      background: #00bfa5;
+      transform: translateY(-2px);
+    }
+
+    pre {
+      background: #2a2a2a;
+      padding: 1rem;
+      border-radius: 6px;
+      white-space: pre-wrap;
+      font-family: 'Courier New', monospace;
+    }
+
+    @media (max-width: 1300px) {
+      .card-container {
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+    }
+
   </style>
 </head>
 <body>
   <div id="intro">
     <h1>AI 계약서 서비스</h1>
-    <p>계약서 초안 생성, 리스크 분석, 유사 템플릿 추천</p>
+    <p>계약서 초안 생성, 리스크 분석, 유사 템플릿 추천을 체험해보세요.</p>
     <button onclick="startService()">시작하기</button>
   </div>
 
   <div id="main">
-    <section>
-      <h2>1) 계약서 초안 생성</h2>
-      <form id="draftForm">
-        <label>A: <input id="partyA" required /></label>
-        <label>B: <input id="partyB" required /></label>
-        <label>목적: <input id="subject" required /></label>
-        <label>날짜: <input id="date" type="date" required /></label>
-        <button type="submit" class="form-btn">초안 생성</button>
-      </form>
-      <h3>결과:</h3>
-      <pre id="draftResult">—</pre>
-    </section>
+    <header>
+      <h1>AI 계약서 서비스</h1>
+    </header>
+    <div class="card-container">
+      <!-- 1) 계약서 초안 생성 -->
+      <section>
+        <h2>1) 계약서 초안 생성</h2>
+        <form id="draftForm">
+          <label>계약 당사자 A:
+            <input id="partyA" placeholder="예: 홍길동" required />
+          </label>
+          <label>계약 당사자 B:
+            <input id="partyB" placeholder="예: 김철수" required />
+          </label>
+          <label>계약 목적:
+            <input id="subject" placeholder="예: 용역 제공" required />
+          </label>
+          <label>효력 발생일:
+            <input id="date" type="date" required />
+          </label>
+          <button type="submit" class="form-btn">초안 생성</button>
+        </form>
+        <h3>생성된 초안:</h3>
+        <pre id="draftResult">—</pre>
+      </section>
 
-    <section>
-      <h2>2) 리스크 분석</h2>
-      <form id="riskForm">
-        <label><textarea id="clauseRisk" rows="4" required></textarea></label>
-        <button type="submit" class="form-btn">분석하기</button>
-      </form>
-      <h3>결과:</h3>
-      <pre id="riskResult">—</pre>
-    </section>
+      <!-- 2) 리스크 분석 -->
+      <section>
+        <h2>2) 리스크 분석</h2>
+        <form id="riskForm">
+          <label>조항 텍스트:
+            <textarea id="clauseRisk" rows="4" placeholder="분석할 조항을 입력하세요." required></textarea>
+          </label>
+          <button type="submit" class="form-btn">분석하기</button>
+        </form>
+        <h3>리스크 레이블:</h3>
+        <pre id="riskResult">—</pre>
+      </section>
 
-    <section>
-      <h2>3) 유사 템플릿 추천</h2>
-      <form id="tmplForm">
-        <label><textarea id="clauseTmpl" rows="4" required></textarea></label>
-        <button type="submit" class="form-btn">추천받기</button>
-      </form>
-      <h3>추천 결과:</h3>
-      <pre id="tmplResult">—</pre>
-    </section>
+      <!-- 3) 유사 템플릿 추천 -->
+      <section>
+        <h2>3) 유사 템플릿 추천</h2>
+        <form id="tmplForm">
+          <label>조항 텍스트:
+            <textarea id="clauseTmpl" rows="4" placeholder="조항을 입력하면 유사 템플릿을 추천합니다." required></textarea>
+          </label>
+          <button type="submit" class="form-btn">추천받기</button>
+        </form>
+        <h3>추천 리스트:</h3>
+        <pre id="tmplResult">—</pre>
+      </section>
+    </div>
   </div>
 
   <script>
@@ -74,61 +210,59 @@
       document.getElementById('main').style.display = 'block';
     }
 
-    const BASE = "";
+    const BASE = "https://korean-contract-ai.onrender.com";
 
     async function post(path, body) {
       const res = await fetch(BASE + path, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body)
+        body: JSON.stringify(body),
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) throw new Error(res.status + " " + res.statusText);
       return res.json();
     }
 
     document.getElementById("draftForm").addEventListener("submit", async e => {
       e.preventDefault();
+      document.getElementById("draftResult").textContent = "생성 중…";
       const body = {
         party_a: document.getElementById("partyA").value,
         party_b: document.getElementById("partyB").value,
         subject: document.getElementById("subject").value,
         date: document.getElementById("date").value,
       };
-      document.getElementById("draftResult").textContent = "생성 중...";
       try {
         const { draft } = await post("/generate_draft", body);
         document.getElementById("draftResult").textContent = draft;
       } catch (err) {
-        document.getElementById("draftResult").textContent = "오류: " + err;
+        document.getElementById("draftResult").textContent = "Error: " + err;
       }
     });
 
     document.getElementById("riskForm").addEventListener("submit", async e => {
       e.preventDefault();
-      const clause = document.getElementById("clauseRisk").value;
-      document.getElementById("riskResult").textContent = "분석 중...";
+      document.getElementById("riskResult").textContent = "분석 중…";
+      const body = { clause: document.getElementById("clauseRisk").value };
       try {
-        const { label } = await post("/analyze_risk", { clause });
-        document.getElementById("riskResult").textContent = label;
+        const { risk_label } = await post("/analyze_risk", body);
+        document.getElementById("riskResult").textContent = risk_label;
       } catch (err) {
-        document.getElementById("riskResult").textContent = "오류: " + err;
+        document.getElementById("riskResult").textContent = "Error: " + err;
       }
     });
 
     document.getElementById("tmplForm").addEventListener("submit", async e => {
       e.preventDefault();
-      const clause = document.getElementById("clauseTmpl").value;
-      document.getElementById("tmplResult").textContent = "추천 중...";
+      document.getElementById("tmplResult").textContent = "검색 중…";
+      const body = { clause: document.getElementById("clauseTmpl").value };
       try {
-        const { templates } = await post("/recommend_templates", { clause });
-        const result = templates.map(t =>
-          `- [${t.template_id}] ${t.title}` +
-          (t.score !== undefined ? ` (score: ${t.score.toFixed(3)})` : "") +
-          `\n  ${t.snippet || ""}`
-        ).join("\n\n");
-        document.getElementById("tmplResult").textContent = result;
+        const { templates } = await post("/recommend_templates", body);
+        document.getElementById("tmplResult").textContent =
+          templates.map(t =>
+            `- [${t.template_id}] ${t.title} (score: ${t.score.toFixed(3)})\n  ${t.snippet}`
+          ).join("\n\n");
       } catch (err) {
-        document.getElementById("tmplResult").textContent = "오류: " + err;
+        document.getElementById("tmplResult").textContent = "Error: " + err;
       }
     });
   </script>
