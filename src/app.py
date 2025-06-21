@@ -3,24 +3,27 @@ import json
 import os
 import torch
 from transformers import BertTokenizer, BertForSequenceClassification
+import openai
 
 app = Flask(__name__)
 
-# 모델 경로 (Hugging Face 또는 로컬 경로)
-MODEL_PATH = "5wqs/kobert-risk-final"
-tokenizer = BertTokenizer.from_pretrained(MODEL_PATH)
-model = BertForSequenceClassification.from_pretrained(MODEL_PATH)
+# 🔐 API 키 (초안 생성을 위해 필요)
+openai.api_key = os.getenv("OPENAI_API_KEY")
+
+# ✅ 리스크 분석 모델 초기화
+MODEL_NAME = "5wqs/kobert-risk-final"  # Hugging Face에 업로드한 모델 이름
+tokenizer = BertTokenizer.from_pretrained(MODEL_NAME)
+model = BertForSequenceClassification.from_pretrained(MODEL_NAME)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model.to(device)
 model.eval()
 
-# 홈 페이지 렌더링
+# 홈페이지 렌더링
 @app.route("/")
 def index():
     return render_template("index.html")
 
-
-# 1. 계약서 초안 생성 API
+# ✅ 계약서 초안 생성 (GPT API)
 @app.route("/generate_draft", methods=["POST"])
 def generate_draft():
     data = request.get_json()
@@ -29,51 +32,60 @@ def generate_draft():
     subject = data.get("subject", "")
     date = data.get("date", "")
 
-    draft = f"""
-본 계약은 {date}에 체결되며, 계약 당사자는 {party_a}와(과) {party_b}이다.
+    prompt = f"""
+너는 한국어 계약서를 작성하는 법률 비서야.
 
-제1조 (목적)
-본 계약은 {subject}와 관련한 제반 조건을 규정함을 목적으로 한다.
+다음 정보를 바탕으로 계약서를 자연스럽고 조항별로 작성해줘:
 
-제2조 (계약 기간)
-본 계약은 계약일로부터 1년간 유효하다.
-    """.strip()
+- 계약 당사자 A: {party_a}
+- 계약 당사자 B: {party_b}
+- 계약 목적: {subject}
+- 효력 발생일: {date}
 
-    return jsonify({"draft": draft})
+제1조 (목적), 제2조 (계약 기간), 제3조 (권리 및 의무), 제4조 (비밀유지), 제5조 (계약 해지), 제6조 (기타사항) 등의 항목을 포함해줘.
+법률적 문체를 사용하고, 각 조항은 실제 계약서처럼 구체적으로 작성해줘.
+    """
 
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7,
+            max_tokens=1500,
+        )
+        draft = response.choices[0].message["content"]
+        return jsonify({"draft": draft})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-# 2. 리스크 분석 API
+# ✅ 리스크 분석 (KoBERT 추론)
 @app.route("/analyze_risk", methods=["POST"])
 def analyze_risk():
     clause = request.json.get("clause", "")
-    if not clause:
-        return jsonify({"risk_label": "Invalid Input"}), 400
+    try:
+        inputs = tokenizer(clause, return_tensors="pt", truncation=True, padding=True).to(device)
+        with torch.no_grad():
+            outputs = model(**inputs)
+            pred = torch.argmax(outputs.logits, dim=1).item()
+        risk_label = "HighRisk" if pred == 1 else "LowRisk"
+        return jsonify({"risk_label": risk_label})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-    inputs = tokenizer(clause, return_tensors="pt", truncation=True, padding=True).to(device)
-    with torch.no_grad():
-        outputs = model(**inputs)
-        pred = torch.argmax(outputs.logits, dim=1).item()
-
-    label = "HighRisk" if pred == 1 else "LowRisk"
-    return jsonify({"risk_label": label})
-
-
-# 3. 유사 템플릿 추천 API
+# ✅ 유사 템플릿 추천
 @app.route("/recommend_templates", methods=["POST"])
 def recommend_templates():
-    clause = request.json.get("clause", "")
+    user_clause = request.json.get("clause", "")
 
-    path = "templates_index/templates_ids.json"
-    if not os.path.exists(path):
-        return jsonify({"templates": [], "error": "템플릿 파일 없음"}), 500
+    template_path = "templates_index/templates_ids.json"
+    if not os.path.exists(template_path):
+        return jsonify({"templates": [], "error": "템플릿 파일이 없습니다."}), 500
 
-    with open(path, "r", encoding="utf-8") as f:
+    with open(template_path, "r", encoding="utf-8") as f:
         templates = json.load(f)
 
-    # FAISS 없이 상위 5개 임시 반환
-    top_k = templates[:5]
+    top_k = templates[:3]
     return jsonify({"templates": top_k})
-
 
 if __name__ == "__main__":
     app.run(debug=True)
