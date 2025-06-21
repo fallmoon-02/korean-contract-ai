@@ -1,14 +1,14 @@
-from flask import Flask, request, jsonify, render_template
-import json
 import os
+import json
+from flask import Flask, request, jsonify, render_template
 import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
-import openai
+from openai import OpenAI
 
 app = Flask(__name__)
 
-# 🔐 GPT API 키
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# ✅ GPT 클라이언트 초기화
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # ✅ 리스크 분석 모델 초기화
 MODEL_NAME = "5wqs/kobert-risk-final"
@@ -18,12 +18,13 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model.to(device)
 model.eval()
 
-# 🏠 홈페이지 렌더링
+# ✅ 홈페이지 렌더링
 @app.route("/")
 def index():
     return render_template("index.html")
 
-# ✍ 계약서 초안 생성
+
+# ✅ 계약서 초안 생성 (GPT)
 @app.route("/generate_draft", methods=["POST"])
 def generate_draft():
     data = request.get_json()
@@ -47,19 +48,20 @@ def generate_draft():
     """
 
     try:
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",  # ✅ gpt-4는 유료 사용자만 가능
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.7,
             max_tokens=1500,
         )
-        draft = response.choices[0].message["content"]
+        draft = response.choices[0].message.content
         return jsonify({"draft": draft})
     except Exception as e:
         print("초안 생성 오류:", e)
         return jsonify({"error": str(e)}), 500
 
-# 🧠 리스크 분석 (KoBERT)
+
+# ✅ 리스크 분석 (KoBERT 모델 추론)
 @app.route("/analyze_risk", methods=["POST"])
 def analyze_risk():
     clause = request.json.get("clause", "")
@@ -76,7 +78,8 @@ def analyze_risk():
         print("리스크 분석 오류:", e)
         return jsonify({"error": str(e)}), 500
 
-# 📚 유사 템플릿 추천
+
+# ✅ 유사 템플릿 추천
 @app.route("/recommend_templates", methods=["POST"])
 def recommend_templates():
     user_clause = request.json.get("clause", "")
@@ -88,12 +91,13 @@ def recommend_templates():
     try:
         with open(template_path, "r", encoding="utf-8") as f:
             templates = json.load(f)
-
         top_k = templates[:3]
         return jsonify({"templates": top_k})
     except Exception as e:
         print("템플릿 추천 오류:", e)
         return jsonify({"templates": [], "error": str(e)}), 500
 
+
+# ✅ 앱 실행
 if __name__ == "__main__":
     app.run(debug=True)
