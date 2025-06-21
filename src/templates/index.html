@@ -71,11 +71,11 @@
       display: flex;
       justify-content: center;
       gap: 2rem;
-      flex-wrap: nowrap; /* 줄바꿈 안함 */
+      flex-wrap: nowrap;
     }
 
     .card-container section {
-      flex: 0 0 400px;  /* 고정 너비 카드 */
+      flex: 0 0 400px;
       background: #1e1e1e;
       border-radius: 12px;
       padding: 2rem;
@@ -100,6 +100,9 @@
       background: #2a2a2a;
       color: #fff;
       margin-top: 0.5rem;
+      margin-right: 0.5rem; /* 오른쪽 마진 추가 */
+      box-sizing: border-box;
+      resize: none;         /* 크기 조절 못함 */
       font-size: 1rem;
     }
 
@@ -139,7 +142,6 @@
         justify-content: center;
       }
     }
-
   </style>
 </head>
 <body>
