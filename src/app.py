@@ -1,28 +1,39 @@
+from flask import Flask, request, jsonify, render_template
 import os
 import json
-from flask import Flask, request, jsonify, render_template
 import torch
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
-from openai import OpenAI
+import openai
+from transformers import BertTokenizer, BertForSequenceClassification
+from sentence_transformers import SentenceTransformer, util
 
 app = Flask(__name__)
 
-# ✅ GPT 클라이언트 초기화
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# 🔐 OpenAI GPT API Key
+openai.api_key = os.getenv("OPENAI_API_KEY")  # 환경변수로 설정하세요
 
-# ✅ 리스크 분석 모델 초기화
-MODEL_NAME = "5wqs/kobert-risk-final"
-tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
+# ✅ KoBERT 리스크 분석 모델 로딩
+RISK_MODEL_NAME = "5wqs/kobert-risk-final"  # Hugging Face 모델
+risk_tokenizer = BertTokenizer.from_pretrained(RISK_MODEL_NAME)
+risk_model = BertForSequenceClassification.from_pretrained(RISK_MODEL_NAME)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model.to(device)
-model.eval()
+risk_model.to(device)
+risk_model.eval()
+
+# ✅ 유사 템플릿 추천을 위한 SBERT 로딩
+sbert_model = SentenceTransformer("jhgan/ko-sbert-nli")  # 한글 SBERT
+template_path = "templates_index/templates_ids.json"
+if not os.path.exists(template_path):
+    raise FileNotFoundError("템플릿 JSON 파일이 존재하지 않습니다.")
+
+with open(template_path, "r", encoding="utf-8") as f:
+    templates = json.load(f)
+template_texts = [t["snippet"] for t in templates]
+template_embeddings = sbert_model.encode(template_texts, convert_to_tensor=True)
 
 # ✅ 홈페이지 렌더링
 @app.route("/")
 def index():
     return render_template("index.html")
-
 
 # ✅ 계약서 초안 생성 (GPT)
 @app.route("/generate_draft", methods=["POST"])
@@ -48,11 +59,11 @@ def generate_draft():
     """
 
     try:
-        response = client.chat.completions.create(
+        response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.7,
-            max_tokens=1500,
+            max_tokens=1500
         )
         draft = response.choices[0].message.content
         return jsonify({"draft": draft})
@@ -60,17 +71,16 @@ def generate_draft():
         print("초안 생성 오류:", e)
         return jsonify({"error": str(e)}), 500
 
-
-# ✅ 리스크 분석 (KoBERT 모델 추론)
+# ✅ 리스크 분석 (KoBERT)
 @app.route("/analyze_risk", methods=["POST"])
 def analyze_risk():
     clause = request.json.get("clause", "")
     try:
-        inputs = tokenizer(clause, return_tensors="pt", truncation=True, padding=True, max_length=512)
+        inputs = risk_tokenizer(clause, return_tensors="pt", truncation=True, padding=True, max_length=512)
         inputs = {k: v.to(device) for k, v in inputs.items()}
 
         with torch.no_grad():
-            outputs = model(**inputs)
+            outputs = risk_model(**inputs)
             pred = torch.argmax(outputs.logits, dim=1).item()
         risk_label = "HighRisk" if pred == 1 else "LowRisk"
         return jsonify({"risk_label": risk_label})
@@ -78,26 +88,33 @@ def analyze_risk():
         print("리스크 분석 오류:", e)
         return jsonify({"error": str(e)}), 500
 
-
-# ✅ 유사 템플릿 추천
+# ✅ 유사 템플릿 추천 (SBERT)
 @app.route("/recommend_templates", methods=["POST"])
 def recommend_templates():
     user_clause = request.json.get("clause", "")
-    template_path = "templates_index/templates_ids.json"
-
-    if not os.path.exists(template_path):
-        return jsonify({"templates": [], "error": "템플릿 파일이 없습니다."}), 500
+    if not user_clause:
+        return jsonify({"templates": []})
 
     try:
-        with open(template_path, "r", encoding="utf-8") as f:
-            templates = json.load(f)
-        top_k = templates[:3]
-        return jsonify({"templates": top_k})
+        query_embedding = sbert_model.encode(user_clause, convert_to_tensor=True)
+        cos_scores = util.pytorch_cos_sim(query_embedding, template_embeddings)[0]
+        top_results = torch.topk(cos_scores, k=3)
+
+        results = []
+        for score, idx in zip(top_results[0], top_results[1]):
+            t = templates[idx]
+            results.append({
+                "template_id": t["template_id"],
+                "title": t["title"],
+                "score": float(score),
+                "snippet": t["snippet"],
+                "file": t.get("file", "#")
+            })
+
+        return jsonify({"templates": results})
     except Exception as e:
         print("템플릿 추천 오류:", e)
-        return jsonify({"templates": [], "error": str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
-
-# ✅ 앱 실행
 if __name__ == "__main__":
     app.run(debug=True)
