@@ -7,9 +7,11 @@ from sentence_transformers import SentenceTransformer, util
 import openai
 
 app = Flask(__name__)
+
+# 🔐 OpenAI API 키 설정
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# ✅ KoBERT 모델 (리스크 분석)
+# ✅ 리스크 분석 모델 초기화 (KoBERT)
 MODEL_NAME = "5wqs/kobert-risk-final"
 tokenizer = BertTokenizer.from_pretrained(MODEL_NAME)
 model = BertForSequenceClassification.from_pretrained(MODEL_NAME)
@@ -17,26 +19,28 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model.to(device)
 model.eval()
 
-# ✅ SBERT 모델 (유사도 기반 추천)
-embedder = SentenceTransformer("snunlp/KR-SBERT-V40K-klueNLI-augSTS")
+# ✅ SBERT 임베딩 모델 로드 (FAISS 없이)
+embedder = SentenceTransformer("jhgan/ko-sbert-nli")
 
-# ✅ 템플릿 로딩
+# ✅ 템플릿 데이터 및 임베딩 로딩
 TEMPLATE_PATH = "templates_index/templates_ids.json"
+templates = []
+template_embeddings = None
+
 try:
     with open(TEMPLATE_PATH, "r", encoding="utf-8") as f:
         templates = json.load(f)
-    template_titles = [t["title"] for t in templates]
-    template_embeddings = embedder.encode(template_titles, convert_to_tensor=True)
+    snippets = [t.get("title", "") for t in templates]  # snippet 없으면 title로 대체
+    template_embeddings = embedder.encode(snippets, convert_to_tensor=True)
 except Exception as e:
-    print(f"템플릿 파일 또는 임베딩 로딩 오류: {e}")
-    templates, template_titles, template_embeddings = [], [], None
+    print(f"템플릿 로딩 오류: {e}")
 
 # ✅ 홈 페이지
 @app.route("/")
 def index():
     return render_template("index.html")
 
-# ✅ 계약서 초안 생성 (GPT 3.5)
+# ✅ 계약서 초안 생성
 @app.route("/generate_draft", methods=["POST"])
 def generate_draft():
     data = request.get_json()
@@ -92,15 +96,15 @@ def analyze_risk():
 def recommend_templates():
     clause = request.json.get("clause", "")
     try:
-        if not template_embeddings:
-            return jsonify({"templates": [], "error": "템플릿 임베딩이 없습니다."})
+        if template_embeddings is None or len(template_embeddings) == 0:
+            return jsonify({"templates": [], "error": "템플릿 임베딩 없음"})
 
         clause_embedding = embedder.encode(clause, convert_to_tensor=True)
         cosine_scores = util.cos_sim(clause_embedding, template_embeddings)[0]
         top_indices = torch.topk(cosine_scores, k=3).indices.tolist()
 
-        top_templates = [templates[i] for i in top_indices]
-        return jsonify({"templates": top_templates})
+        recommended = [templates[i] for i in top_indices]
+        return jsonify({"templates": recommended})
     except Exception as e:
         print("템플릿 추천 오류:", e)
         return jsonify({"error": str(e)}), 500
