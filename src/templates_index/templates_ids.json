@@ -2,151 +2,181 @@
   {
     "id": "template_001",
     "title": "1인 미디어콘텐츠 창작자",
-    "file": "/static/templates/1인 미디어콘텐츠 창작자.pdf"
+    "file": "/static/templates/1인 미디어콘텐츠 창작자.pdf",
+    "snippet": "1인 미디어콘텐츠 창작자"
   },
   {
     "id": "template_002",
     "title": "[별지 제9호서식] 용역표준계약서(국가를 당사자로 하는 계약에 관한 법률 시행규칙)",
-    "file": "/static/templates/[별지 제9호서식] 용역표준계약서(국가를 당사자로 하는 계약에 관한 법률 시행규칙).pdf"
+    "file": "/static/templates/[별지 제9호서식] 용역표준계약서(국가를 당사자로 하는 계약에 관한 법률 시행규칙).pdf",
+    "snippet": "[별지 제9호서식] 용역표준계약서(국가를 당사자로 하는 계약에 관한 법률 시행규칙)"
   },
   {
     "id": "template_003",
     "title": "게임용소프트웨어개발구축업종(2024.12.24 개정)",
-    "file": "/static/templates/게임용소프트웨어개발구축업종(2024.12.24 개정).pdf"
+    "file": "/static/templates/게임용소프트웨어개발구축업종(2024.12.24 개정).pdf",
+    "snippet": "게임용소프트웨어개발구축업종(2024.12.24 개정)"
   },
   {
     "id": "template_004",
     "title": "경비업종(기술자료유용시 5배배상 및 손해액추정 추가)",
-    "file": "/static/templates/경비업종(기술자료유용시 5배배상 및 손해액추정 추가).pdf"
+    "file": "/static/templates/경비업종(기술자료유용시 5배배상 및 손해액추정 추가).pdf",
+    "snippet": "경비업종(기술자료유용시 5배배상 및 손해액추정 추가)"
   },
   {
     "id": "template_005",
     "title": "광고(전시)업종(기술자료유용시 5배배상 및 손해액추정 추가)",
-    "file": "/static/templates/광고(전시)업종(기술자료유용시 5배배상 및 손해액추정 추가).pdf"
+    "file": "/static/templates/광고(전시)업종(기술자료유용시 5배배상 및 손해액추정 추가).pdf",
+    "snippet": "광고(전시)업종(기술자료유용시 5배배상 및 손해액추정 추가)"
   },
   {
     "id": "template_006",
     "title": "근로자_파견_계약서",
-    "file": "/static/templates/근로자_파견_계약서.pdf"
+    "file": "/static/templates/근로자_파견_계약서.pdf",
+    "snippet": "근로자_파견_계약서"
   },
   {
     "id": "template_007",
     "title": "방산업종(2024.12.24 개정)",
-    "file": "/static/templates/방산업종(2024.12.24 개정).pdf"
+    "file": "/static/templates/방산업종(2024.12.24 개정).pdf",
+    "snippet": "방산업종(2024.12.24 개정)"
   },
   {
     "id": "template_008",
     "title": "변경도급계약서류",
-    "file": "/static/templates/변경도급계약서류.pdf"
+    "file": "/static/templates/변경도급계약서류.pdf",
+    "snippet": "변경도급계약서류"
   },
   {
     "id": "template_009",
     "title": "볌용(제조업 분야) 표준하도급계약서(2024.12.24 제정)",
-    "file": "/static/templates/볌용(제조업 분야) 표준하도급계약서(2024.12.24 제정).pdf"
+    "file": "/static/templates/볌용(제조업 분야) 표준하도급계약서(2024.12.24 제정).pdf",
+    "snippet": "볌용(제조업 분야) 표준하도급계약서(2024.12.24 제정)"
   },
   {
     "id": "template_010",
     "title": "상용소프트웨어유지관리업종(기술자료유용시 5배배상 및 손해액추정 추가)",
-    "file": "/static/templates/상용소프트웨어유지관리업종(기술자료유용시 5배배상 및 손해액추정 추가).pdf"
+    "file": "/static/templates/상용소프트웨어유지관리업종(기술자료유용시 5배배상 및 손해액추정 추가).pdf",
+    "snippet": "상용소프트웨어유지관리업종(기술자료유용시 5배배상 및 손해액추정 추가)"
   },
   {
     "id": "template_011",
     "title": "서울디자인재단 디자인용역표준계약서",
-    "file": "/static/templates/서울디자인재단 디자인용역표준계약서.pdf"
+    "file": "/static/templates/서울디자인재단 디자인용역표준계약서.pdf",
+    "snippet": "서울디자인재단 디자인용역표준계약서"
   },
   {
     "id": "template_012",
     "title": "서울형 간병인 중개 표준계약서",
-    "file": "/static/templates/서울형 간병인 중개 표준계약서.pdf"
+    "file": "/static/templates/서울형 간병인 중개 표준계약서.pdf",
+    "snippet": "서울형 간병인 중개 표준계약서"
   },
   {
     "id": "template_013",
     "title": "서울형 운동트레이너 ",
-    "file": "/static/templates/서울형 운동트레이너 .pdf"
+    "file": "/static/templates/서울형 운동트레이너 .pdf",
+    "snippet": "서울형 운동트레이너 "
   },
   {
     "id": "template_014",
     "title": "소방시설공사업종(기술자료유용시 5배배상 및 손해액추정 추가)",
-    "file": "/static/templates/소방시설공사업종(기술자료유용시 5배배상 및 손해액추정 추가).pdf"
+    "file": "/static/templates/소방시설공사업종(기술자료유용시 5배배상 및 손해액추정 추가).pdf",
+    "snippet": "소방시설공사업종(기술자료유용시 5배배상 및 손해액추정 추가)"
   },
   {
     "id": "template_015",
     "title": "엔지니어링활동업종(기술자료유용시 5배배상 및 손해액추정 추가)",
-    "file": "/static/templates/엔지니어링활동업종(기술자료유용시 5배배상 및 손해액추정 추가).pdf"
+    "file": "/static/templates/엔지니어링활동업종(기술자료유용시 5배배상 및 손해액추정 추가).pdf",
+    "snippet": "엔지니어링활동업종(기술자료유용시 5배배상 및 손해액추정 추가)"
   },
   {
     "id": "template_016",
     "title": "의료기기업종(기술자료유용시 5배배상 및 손해액추정 추가)",
-    "file": "/static/templates/의료기기업종(기술자료유용시 5배배상 및 손해액추정 추가).pdf"
+    "file": "/static/templates/의료기기업종(기술자료유용시 5배배상 및 손해액추정 추가).pdf",
+    "snippet": "의료기기업종(기술자료유용시 5배배상 및 손해액추정 추가)"
   },
   {
     "id": "template_017",
     "title": "자기상표부착물품제작업종(기술자료유용시 5배배상 및 손해액추정 추가)",
-    "file": "/static/templates/자기상표부착물품제작업종(기술자료유용시 5배배상 및 손해액추정 추가).pdf"
+    "file": "/static/templates/자기상표부착물품제작업종(기술자료유용시 5배배상 및 손해액추정 추가).pdf",
+    "snippet": "자기상표부착물품제작업종(기술자료유용시 5배배상 및 손해액추정 추가)"
   },
   {
     "id": "template_018",
     "title": "자동차업종(기술자료유용시 5배배상 및 손해액추정 추가.)",
-    "file": "/static/templates/자동차업종(기술자료유용시 5배배상 및 손해액추정 추가.).pdf"
+    "file": "/static/templates/자동차업종(기술자료유용시 5배배상 및 손해액추정 추가.).pdf",
+    "snippet": "자동차업종(기술자료유용시 5배배상 및 손해액추정 추가.)"
   },
   {
     "id": "template_019",
     "title": "전기업종(2024.12.24 개정)",
-    "file": "/static/templates/전기업종(2024.12.24 개정).pdf"
+    "file": "/static/templates/전기업종(2024.12.24 개정).pdf",
+    "snippet": "전기업종(2024.12.24 개정)"
   },
   {
     "id": "template_020",
     "title": "정보시스템공급개발구축업(기술자료유용시 5배배상 및 손해액추정 추가)",
-    "file": "/static/templates/정보시스템공급개발구축업(기술자료유용시 5배배상 및 손해액추정 추가).pdf"
+    "file": "/static/templates/정보시스템공급개발구축업(기술자료유용시 5배배상 및 손해액추정 추가).pdf",
+    "snippet": "정보시스템공급개발구축업(기술자료유용시 5배배상 및 손해액추정 추가)"
   },
   {
     "id": "template_021",
     "title": "정보시스템유지관리업종(기술자료유용시 5배배상 및 손해액추정 추가)",
-    "file": "/static/templates/정보시스템유지관리업종(기술자료유용시 5배배상 및 손해액추정 추가).pdf"
+    "file": "/static/templates/정보시스템유지관리업종(기술자료유용시 5배배상 및 손해액추정 추가).pdf",
+    "snippet": "정보시스템유지관리업종(기술자료유용시 5배배상 및 손해액추정 추가)"
   },
   {
     "id": "template_022",
     "title": "정보통신공사업종(기술자료유용시 5배배상 및 손해액추정 추가)",
-    "file": "/static/templates/정보통신공사업종(기술자료유용시 5배배상 및 손해액추정 추가).pdf"
+    "file": "/static/templates/정보통신공사업종(기술자료유용시 5배배상 및 손해액추정 추가).pdf",
+    "snippet": "정보통신공사업종(기술자료유용시 5배배상 및 손해액추정 추가)"
   },
   {
     "id": "template_023",
     "title": "청년안심주택(공공임대) 매매(매입)계약서",
-    "file": "/static/templates/청년안심주택(공공임대) 매매(매입)계약서.pdf"
+    "file": "/static/templates/청년안심주택(공공임대) 매매(매입)계약서.pdf",
+    "snippet": "청년안심주택(공공임대) 매매(매입)계약서"
   },
   {
     "id": "template_024",
     "title": "편의점 표준가맹계약서(20151105 공개용_최종)",
-    "file": "/static/templates/편의점 표준가맹계약서(20151105 공개용_최종).pdf"
+    "file": "/static/templates/편의점 표준가맹계약서(20151105 공개용_최종).pdf",
+    "snippet": "편의점 표준가맹계약서(20151105 공개용_최종)"
   },
   {
     "id": "template_025",
     "title": "표준가맹계약서 (건강기능식품) 제정안(2022.1.)",
-    "file": "/static/templates/표준가맹계약서 (건강기능식품) 제정안(2022.1.).pdf"
+    "file": "/static/templates/표준가맹계약서 (건강기능식품) 제정안(2022.1.).pdf",
+    "snippet": "표준가맹계약서 (건강기능식품) 제정안(2022.1.)"
   },
   {
     "id": "template_026",
     "title": "표준비밀유지계약서",
-    "file": "/static/templates/표준비밀유지계약서.pdf"
+    "file": "/static/templates/표준비밀유지계약서.pdf",
+    "snippet": "표준비밀유지계약서"
   },
   {
     "id": "template_027",
     "title": "프랜차이즈(치킨업) 표준계약서 [2024.12. 개정]",
-    "file": "/static/templates/프랜차이즈(치킨업) 표준계약서 [2024.12. 개정].pdf"
+    "file": "/static/templates/프랜차이즈(치킨업) 표준계약서 [2024.12. 개정].pdf",
+    "snippet": "프랜차이즈(치킨업) 표준계약서 [2024.12. 개정]"
   },
   {
     "id": "template_028",
     "title": "프랜차이즈(커피업) 표준계약서 [2024.12. 개정]",
-    "file": "/static/templates/프랜차이즈(커피업) 표준계약서 [2024.12. 개정].pdf"
+    "file": "/static/templates/프랜차이즈(커피업) 표준계약서 [2024.12. 개정].pdf",
+    "snippet": "프랜차이즈(커피업) 표준계약서 [2024.12. 개정]"
   },
   {
     "id": "template_029",
     "title": "플랫폼 방문레슨 종사자",
-    "file": "/static/templates/플랫폼 방문레슨 종사자.pdf"
+    "file": "/static/templates/플랫폼 방문레슨 종사자.pdf",
+    "snippet": "플랫폼 방문레슨 종사자"
   },
   {
     "id": "template_030",
     "title": "해외건설업종(기술자료유용시 5배배상 및 손해액추정 추가)",
-    "file": "/static/templates/해외건설업종(기술자료유용시 5배배상 및 손해액추정 추가).pdf"
+    "file": "/static/templates/해외건설업종(기술자료유용시 5배배상 및 손해액추정 추가).pdf",
+    "snippet": "해외건설업종(기술자료유용시 5배배상 및 손해액추정 추가)"
   }
 ]
