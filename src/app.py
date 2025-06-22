@@ -7,10 +7,10 @@ import openai
 
 app = Flask(__name__)
 
-# 🔐 OpenAI API 키
+# ✅ OpenAI API 키
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# ✅ 리스크 분석 모델 초기화 (KoBERT)
+# ✅ KoBERT 리스크 분석 모델 초기화
 MODEL_NAME = "5wqs/kobert-risk-final"
 tokenizer = BertTokenizer.from_pretrained(MODEL_NAME)
 model = BertForSequenceClassification.from_pretrained(MODEL_NAME)
@@ -68,7 +68,7 @@ def generate_draft():
         print("초안 생성 오류:", e)
         return jsonify({"error": str(e)}), 500
 
-# ✅ 리스크 분석 (KoBERT)
+# ✅ 리스크 분석
 @app.route("/analyze_risk", methods=["POST"])
 def analyze_risk():
     clause = request.json.get("clause", "")
@@ -83,22 +83,26 @@ def analyze_risk():
         print("리스크 분석 오류:", e)
         return jsonify({"error": str(e)}), 500
 
-# ✅ 키워드 기반 템플릿 추천 (빠름)
+# ✅ 템플릿 추천 (단어 일치 수 기반)
 @app.route("/recommend_templates", methods=["POST"])
 def recommend_templates():
     clause = request.json.get("clause", "").lower()
     try:
-        matched = []
+        ranked = []
         for t in templates:
             title = t.get("title", "").lower()
-            # 단어 기준으로 포함 여부 확인
-            if any(word in clause for word in title.split()):
-                matched.append({"title": t.get("title")})
+            title_words = set(title.split())
+            match_count = sum(1 for word in title_words if word in clause)
+            if match_count > 0:
+                ranked.append((match_count, t["title"]))
 
-        if not matched:
-            matched = [{"title": t.get("title")} for t in templates[:3]]
+        ranked.sort(reverse=True, key=lambda x: x[0])
+        top_titles = [{"title": title} for _, title in ranked[:5]]
 
-        return jsonify({"templates": matched[:5]})
+        if not top_titles:
+            top_titles = [{"title": t["title"]} for t in templates[:3]]
+
+        return jsonify({"templates": top_titles})
     except Exception as e:
         print("템플릿 추천 오류:", e)
         return jsonify({"error": str(e)}), 500
