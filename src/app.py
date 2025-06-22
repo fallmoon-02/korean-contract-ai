@@ -7,10 +7,10 @@ import openai
 
 app = Flask(__name__)
 
-# ✅ OpenAI API 키
+# ✅ OpenAI API Key 설정
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# ✅ KoBERT 리스크 분석 모델 초기화
+# ✅ KoBERT 모델 로드
 MODEL_NAME = "5wqs/kobert-risk-final"
 tokenizer = BertTokenizer.from_pretrained(MODEL_NAME)
 model = BertForSequenceClassification.from_pretrained(MODEL_NAME)
@@ -18,16 +18,16 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model.to(device)
 model.eval()
 
-# ✅ 템플릿 데이터 로딩
+# ✅ 템플릿 JSON 로드
 TEMPLATE_PATH = "templates_index/templates_ids.json"
 try:
     with open(TEMPLATE_PATH, "r", encoding="utf-8") as f:
         templates = json.load(f)
 except Exception as e:
-    print(f"템플릿 파일 로딩 오류: {e}")
+    print(f"[ERROR] 템플릿 로딩 실패: {e}")
     templates = []
 
-# ✅ 홈 페이지
+# ✅ 메인 페이지
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -77,35 +77,35 @@ def analyze_risk():
         with torch.no_grad():
             outputs = model(**inputs)
             pred = torch.argmax(outputs.logits, dim=1).item()
-        risk_label = "HighRisk" if pred == 1 else "LowRisk"
-        return jsonify({"risk_label": risk_label})
+        label = "HighRisk" if pred == 1 else "LowRisk"
+        return jsonify({"risk_label": label})
     except Exception as e:
         print("리스크 분석 오류:", e)
         return jsonify({"error": str(e)}), 500
 
-# ✅ 템플릿 추천 (단어 일치 수 기반)
+# ✅ 템플릿 추천 (문장 키워드 기반 + PDF 링크 포함)
 @app.route("/recommend_templates", methods=["POST"])
 def recommend_templates():
     clause = request.json.get("clause", "").lower()
     try:
-        ranked = []
+        matches = []
         for t in templates:
             title = t.get("title", "").lower()
-            title_words = set(title.split())
-            match_count = sum(1 for word in title_words if word in clause)
-            if match_count > 0:
-                ranked.append((match_count, t["title"]))
+            if any(word in clause for word in title.split()):
+                matches.append({
+                    "title": t["title"],
+                    "file": t["file"]
+                })
 
-        ranked.sort(reverse=True, key=lambda x: x[0])
-        top_titles = [{"title": title} for _, title in ranked[:5]]
+        # 유사 템플릿 최대 5개만 반환
+        if not matches:
+            matches = templates[:3]  # fallback
 
-        if not top_titles:
-            top_titles = [{"title": t["title"]} for t in templates[:3]]
-
-        return jsonify({"templates": top_titles})
+        return jsonify({"templates": matches[:5]})
     except Exception as e:
         print("템플릿 추천 오류:", e)
         return jsonify({"error": str(e)}), 500
 
+# ✅ 앱 실행
 if __name__ == "__main__":
     app.run(debug=True)
