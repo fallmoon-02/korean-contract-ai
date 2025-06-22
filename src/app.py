@@ -1,54 +1,49 @@
+from flask import Flask, request, jsonify, render_template
 import os
 import json
 import torch
-import faiss
-import openai
-from flask import Flask, request, jsonify, render_template
 from transformers import BertTokenizer, BertForSequenceClassification
-from dotenv import load_dotenv
+from sentence_transformers import SentenceTransformer, util
 
-# 환경변수 로드
-load_dotenv()
+app = Flask(__name__)
 
-app = Flask(__name__, static_folder="static", template_folder="templates")
-
-# 1. 모델 로드
-MODEL_ID = "5wqs/kobert-risk-final"
-HF_TOKEN = os.getenv("HF_TOKEN")
-
-tokenizer = BertTokenizer.from_pretrained(MODEL_ID, token=HF_TOKEN)
-model = BertForSequenceClassification.from_pretrained(MODEL_ID, token=HF_TOKEN)
-model.eval()
-
-# 2. FAISS 인덱스 로드
-INDEX_PATH = os.path.join("templates_index", "templates.faiss")
-IDS_PATH = os.path.join("templates_index", "templates_ids.json")
-
-faiss_index = faiss.read_index(INDEX_PATH)
-with open(IDS_PATH, "r", encoding="utf-8") as f:
-    template_ids = json.load(f)
-
-# 3. OpenAI 키 로딩
+# ✅ OpenAI API 키 설정
+import openai
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# -------------------------
-# 임베딩 함수
-# -------------------------
-def embed(text):
-    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding="max_length", max_length=256)
-    with torch.no_grad():
-        hidden = model.bert(**inputs).last_hidden_state
-    vec = hidden.mean(dim=1).cpu().numpy().astype("float32")
-    faiss.normalize_L2(vec)
-    return vec
+# ✅ KoBERT 리스크 분석 모델 초기화
+MODEL_NAME = "5wqs/kobert-risk-final"
+tokenizer = BertTokenizer.from_pretrained(MODEL_NAME)
+model = BertForSequenceClassification.from_pretrained(MODEL_NAME)
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model.to(device)
+model.eval()
 
-# -------------------------
-# 라우트
-# -------------------------
-@app.route("/", methods=["GET"])
+# ✅ 템플릿 데이터 및 snippet 로딩
+TEMPLATE_PATH = "templates_index/templates_ids.json"
+try:
+    with open(TEMPLATE_PATH, "r", encoding="utf-8") as f:
+        templates = json.load(f)
+except Exception as e:
+    print(f"템플릿 파일 로딩 오류: {e}")
+    templates = []
+
+# ✅ 문장 임베딩 모델 초기화 (SBERT)
+try:
+    embedder = SentenceTransformer("jhgan/ko-sbert-nli")
+    template_snippets = [t.get("title", "") for t in templates]
+    template_embeddings = embedder.encode(template_snippets, convert_to_tensor=True)
+except Exception as e:
+    print("임베딩 초기화 오류:", e)
+    embedder = None
+    template_embeddings = None
+
+# ✅ 홈 페이지
+@app.route("/")
 def index():
     return render_template("index.html")
 
+# ✅ 계약서 초안 생성
 @app.route("/generate_draft", methods=["POST"])
 def generate_draft():
     data = request.get_json()
@@ -71,66 +66,50 @@ def generate_draft():
 법률적 문체를 사용하고, 각 조항은 실제 계약서처럼 구체적으로 작성해줘.
     """
 
-
     try:
-        response = openai.chat.completions.create(
+        response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.7,
-            max_tokens=1500
+            max_tokens=1500,
         )
-        draft = response.choices[0].message.content.strip()
+        draft = response.choices[0].message["content"]
         return jsonify({"draft": draft})
     except Exception as e:
+        print("초안 생성 오류:", e)
         return jsonify({"error": str(e)}), 500
 
+# ✅ 리스크 분석
 @app.route("/analyze_risk", methods=["POST"])
 def analyze_risk():
-    data = request.get_json()
-    clause = data.get("clause", "")
-    if not clause:
-        return jsonify({"error": "clause is required"}), 400
+    clause = request.json.get("clause", "")
+    try:
+        inputs = tokenizer(clause, return_tensors="pt", truncation=True, padding=True, max_length=512)
+        inputs = {k: v.to(device) for k, v in inputs.items()}
+        with torch.no_grad():
+            outputs = model(**inputs)
+            pred = torch.argmax(outputs.logits, dim=1).item()
+        risk_label = "HighRisk" if pred == 1 else "LowRisk"
+        return jsonify({"risk_label": risk_label})
+    except Exception as e:
+        print("리스크 분석 오류:", e)
+        return jsonify({"error": str(e)}), 500
 
-    inputs = tokenizer(clause, return_tensors="pt", truncation=True, padding="max_length", max_length=256)
-    with torch.no_grad():
-        logits = model(**inputs).logits
-    pred = torch.argmax(logits, dim=1).item()
-    label = "HighRisk" if pred == 1 else "LowRisk"
-    return jsonify({"risk_label": label})
-
+# ✅ 템플릿 추천 (이름만 추천)
 @app.route("/recommend_templates", methods=["POST"])
 def recommend_templates():
-    data = request.get_json()
-    clause = data.get("clause", "")
-    if not clause:
-        return jsonify({"error": "clause is required"}), 400
+    clause = request.json.get("clause", "")
+    try:
+        if embedder is None or template_embeddings is None or len(template_embeddings) == 0:
+            raise ValueError("임베딩 모델 또는 템플릿 벡터가 초기화되지 않았습니다.")
+        clause_embedding = embedder.encode(clause, convert_to_tensor=True)
+        similarities = util.cos_sim(clause_embedding, template_embeddings)[0]
+        top_indices = torch.topk(similarities, k=3).indices.tolist()
+        top_titles = [templates[i]["title"] for i in top_indices]
+        return jsonify({"templates": top_titles})
+    except Exception as e:
+        print("템플릿 추천 오류:", e)
+        return jsonify({"error": str(e)}), 500
 
-    vec = embed(clause)
-    D, I = faiss_index.search(vec, 3)
-
-    recs = []
-    for idx in I[0]:
-        template = template_ids[idx]
-        if isinstance(template, dict):
-            recs.append({
-                "template_id": template.get("template_id", f"id_{idx}"),
-                "title": template.get("title", ""),
-                "score": float(D[0][list(I[0]).index(idx)]),
-                "snippet": template.get("snippet", "")
-            })
-        else:
-            # fallback in case template is a string
-            recs.append({
-                "template_id": f"id_{idx}",
-                "title": str(template),
-                "score": float(D[0][list(I[0]).index(idx)]),
-                "snippet": ""
-            })
-
-    return jsonify({"templates": recs})
-
-# -------------------------
-# 실행
-# -------------------------
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run(debug=True)
